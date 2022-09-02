@@ -1,6 +1,7 @@
 #include<stdio.h>
 #include<stdlib.h>
-#include<ncurses.h>
+#include<string.h>
+#include<curses.h>
 
 enum control{write,backspace};
 
@@ -50,28 +51,46 @@ void create_keyboard(int len, int hei,char in) {
 		create_newwin(hei / 10, len / 2, hei-(hei/10), (len / 4),0);
 }
 
+void generate_giberish(char* buf,int len) {
+	char dict[100][100] = {"the","of","and","a","to","in","is","you","that","it","he","was","for","on","are","as","with","his","they","I","at","be","this","have","from","or","one","had","by","word"};
+	int ran;
+	while(--len > 0) {
+		ran = rand() % 29;
+		strcat(buf,dict[ran]);
+		strcat(buf," ");
+	}
+}
+
 int main() {
 	WINDOW *my_win;
 	initscr();
 	start_color();
+	init_color(COLOR_CYAN,250,250,250);
+	init_pair(2,COLOR_CYAN,COLOR_BLACK);
 	cbreak();
 	noecho();
 	int x = 0,y = 0;
+	char* pre = malloc(sizeof(char) * 100);
+	generate_giberish(pre,25);
+
+	//strcpy(pre,"this is what you have to type");
 	
+	char* post = malloc(sizeof(char) * 100);
 	enum control curcon;
 
-	char c;
-	
+	char c;	
 	
 	while(1) {
+		attron(COLOR_PAIR(2));
+		mvaddstr(y,0,pre);
+		attroff(COLOR_PAIR(2));
+		mvaddstr(y,0,post);
 		refresh();
 		create_keyboard(COLS,LINES,c);
-		c = getchar();
-		
+		c = getchar();	
 		switch(c) {
 			case 10: /* Linebreak */
-				x = 0;
-				++y;
+				c = ' ';
 				break;
 			case 11: /* Tabulator */
 				x += 8;
@@ -82,21 +101,21 @@ int main() {
 				return 0;
 			case 127: /* Backspace */
 				if(x > 0) {
-					c = ' ';
 					--x;
 				}else if(y > 0) {
 					--y;
 				}
-				c = ' ';
+				post[x] = '\0';
 				curcon = backspace;
 				break;
 			default:
+			post[x] = c;
 		}
 		if(curcon == backspace) {
-			mvaddch(y, x,c);
+			//mvaddch(y, x,c);
 			move(y, x);
 		} else {
-			mvaddch(y, x,c);
+			//mvaddch(y,x,c);
 			++x;
 		}
 		refresh();
