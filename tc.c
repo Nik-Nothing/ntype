@@ -5,57 +5,56 @@
 
 enum control{write,backspace};
 
-WINDOW *create_newwin(int h,int w,int sy ,int sx,short pressed) {
+WINDOW *create_newwin(int h,int w,int sy ,int sx,short pressed,short cor) {
 	WINDOW *local_win;
-	init_pair(1,COLOR_RED,COLOR_BLACK);
 
 	local_win = newwin(h,w,sy,sx);
 	box(local_win,0,0);
 	if(pressed == 1)
-		wbkgd(local_win,COLOR_PAIR(1));
+		wbkgd(local_win,COLOR_PAIR(1+cor));
 	wrefresh(local_win);
 	return local_win;
 }
 
-void create_keyboard(int len, int hei,char in) {
+void create_keyboard(int len, int hei,char in,short cor) {
 	int x=0,y=0;
 	char c1[10] = {'q','w','e','r','t','z','u','i','o','p'};
 	char c2[9] = {'a','s','d','f','g','h','j','k','l'};
 	char c3[8] = {'y','x','c','v','b','n','m',','};
 	while(x != 10) {
 		if(c1[x] == in)
-			create_newwin(hei/10,len/10,hei-(hei / 10)*4,(len / 10) * x,1);
+			create_newwin(hei/10,len/10,hei-(hei / 10)*4,(len / 10) * x,1,cor);
 		else
-			create_newwin(hei/10,len/10,hei-(hei / 10)*4,(len / 10) * x,0);
+			create_newwin(hei/10,len/10,hei-(hei / 10)*4,(len / 10) * x,0,cor);
 		++x;
 	}
 	x = 0;
 	while(x != 9) {
 		if(c2[x] == in)
-			create_newwin(hei / 10,len / 10 ,hei-(hei / 10)*3,((len / 10) * x) + (len / 25),1 ) ;
+			create_newwin(hei / 10,len / 10 ,hei-(hei / 10)*3,((len / 10) * x) + (len / 25),1,cor) ;
 		else
-			create_newwin(hei / 10,len / 10 ,hei-(hei / 10)*3,((len / 10) * x) + (len / 25),0 ) ;
+			create_newwin(hei / 10,len / 10 ,hei-(hei / 10)*3,((len / 10) * x) + (len / 25),0,cor) ;
 		++x;
 	}
 	x = 0;
 	while(x != 8) {
 		if(c3[x] == in)
-			create_newwin(hei / 10,len / 10 ,hei-(hei/10)*2, ((len / 10) * x) +((len / 25)*2),1);
+			create_newwin(hei / 10,len / 10 ,hei-(hei/10)*2, ((len / 10) * x) +((len / 25)*2),1,cor);
 		else
-			create_newwin(hei / 10,len / 10 ,hei-(hei/10)*2, ((len / 10) * x) +((len / 25)*2),0);
+			create_newwin(hei / 10,len / 10 ,hei-(hei/10)*2, ((len / 10) * x) +((len / 25)*2),0,cor);
 		++x;
 	}
 	if(in == ' ')
-		create_newwin(hei / 10, len / 2, hei-(hei/10), (len / 4),1);
+		create_newwin(hei / 10, len / 2, hei-(hei/10), (len / 4),1,cor);
 	else
-		create_newwin(hei / 10, len / 2, hei-(hei/10), (len / 4),0);
+		create_newwin(hei / 10, len / 2, hei-(hei/10), (len / 4),0,cor);
 }
 
 void generate_giberish(char* buf,int len) {
-	char dict[100][100] = {"the","of","and","a","to","in","is","you","that","it","he","was","for","on","are","as","with","his","they","I","at","be","this","have","from","or","one","had","by","word"};
+	char dict[101][101] = {"the","of","and","a","to","in","is","you","that","it","he","was","for","on","are","as","with","his","they","I","at","be","this","have","from","or","one","had","by","word","but","not","what","all","were","we","when","your","can","said","there","use","an","each","which","she","do","how","their","if","will","up","other","about","out","many","then","them","these","so","some","her","would","make","like","him","into","time","has","look","two","more","write","go","see","number","no","way","could","people","my","than","first","water","been","call","who","oil","its","now","find","long","down","day","did","get","come","made","may","part"};
 	int ran;
 	while(--len > 0) {
-		ran = rand() % 29;
+		ran = rand() % 100;
 		strcat(buf,dict[ran]);
 		strcat(buf," ");
 	}
@@ -65,29 +64,44 @@ int main() {
 	WINDOW *my_win;
 	initscr();
 	start_color();
-	init_color(COLOR_CYAN,250,250,250);
-	init_pair(2,COLOR_CYAN,COLOR_BLACK);
+	init_color(COLOR_CYAN,350,350,350);
+	init_pair(1,COLOR_BLACK,COLOR_GREEN);
+	init_pair(2,COLOR_BLACK,COLOR_RED);
+	init_pair(3,COLOR_CYAN,COLOR_BLACK);
+	init_pair(4,COLOR_RED,COLOR_BLACK);
 	cbreak();
 	noecho();
 	int x = 0,y = 0;
-	char* pre = malloc(sizeof(char) * 100);
-	generate_giberish(pre,25);
+	char* pre = malloc(sizeof(char) * 1000);
+	int wc = 20;
+	generate_giberish(pre,wc);
+	int length = strlen(pre);
+	int start_time=(unsigned long)time(NULL);
 
-	//strcpy(pre,"this is what you have to type");
-	
-	char* post = malloc(sizeof(char) * 100);
-	enum control curcon;
+	char* post = malloc(sizeof(char) * 1000);
+	enum control curcon = write;
 
 	char c;	
 	
 	while(1) {
-		attron(COLOR_PAIR(2));
+		attron(COLOR_PAIR(3));
 		mvaddstr(y,0,pre);
-		attroff(COLOR_PAIR(2));
+		attroff(COLOR_PAIR(3));
 		mvaddstr(y,0,post);
+		int cor=0;
+		if(pre[x-1] != post[x-1] && curcon != backspace){
+			attron(COLOR_PAIR(4));
+			mvaddch(y,x-1,c);
+			attroff(COLOR_PAIR(4));
+			cor=1;
+		}
+
 		refresh();
-		create_keyboard(COLS,LINES,c);
+		create_keyboard(COLS,LINES,c,cor);
+		if(x == length-1)
+			break;
 		c = getchar();	
+		curcon = write;
 		switch(c) {
 			case 10: /* Linebreak */
 				c = ' ';
@@ -106,6 +120,7 @@ int main() {
 					--y;
 				}
 				post[x] = '\0';
+				c = '\0';
 				curcon = backspace;
 				break;
 			default:
@@ -118,8 +133,9 @@ int main() {
 			//mvaddch(y,x,c);
 			++x;
 		}
-		refresh();
-		create_keyboard(COLS,LINES,c);
-		curcon = write;
 	}
+	endwin();
+	int time_elps = (unsigned long)time(NULL) - start_time;
+	printf("%d Words in %d Seconds! that is %.2f WPM\n",wc,time_elps,(float)60*((float)wc / (float)time_elps)) ;
+	return 0;
 }
