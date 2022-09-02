@@ -3,7 +3,7 @@ Typing Curses
 simple typing test using libcurses
 
 example output:
-
+~~~ shell
 testing this programm
 
 
@@ -21,3 +21,4 @@ testing this programm
                  ┌────────────────────────────────┐
                  │                                │
                  └────────────────────────────────┘
+~~~
