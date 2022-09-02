@@ -61,8 +61,11 @@ void generate_giberish(char* buf,int len) {
 }
 
 int main() {
+	int start_time=(unsigned long)time(NULL);
+	srand(time(NULL));
 	WINDOW *my_win;
 	initscr();
+	curs_set(0);
 	start_color();
 	init_color(COLOR_CYAN,350,350,350);
 	init_pair(1,COLOR_BLACK,COLOR_GREEN);
@@ -76,26 +79,30 @@ int main() {
 	int wc = 20;
 	generate_giberish(pre,wc);
 	int length = strlen(pre);
-	int start_time=(unsigned long)time(NULL);
 
 	char* post = malloc(sizeof(char) * 1000);
 	enum control curcon = write;
-
-	char c;	
-	
+	char c;
+	int mistakes = 0;
+	WINDOW *tpwin;
 	while(1) {
-		attron(COLOR_PAIR(3));
-		mvaddstr(y,0,pre);
-		attroff(COLOR_PAIR(3));
-		mvaddstr(y,0,post);
+		refresh();
+		tpwin = create_newwin(LINES-(LINES/10)*4,COLS,0,0,0,0);
+		wattron(tpwin,COLOR_PAIR(3));
+		mvwaddstr(tpwin,y+1,1,pre);
+		wrefresh(tpwin);
+		wattroff(tpwin,COLOR_PAIR(3));
+		mvwaddstr(tpwin,y+1,1,post);
+		wrefresh(tpwin);
 		int cor=0;
 		if(pre[x-1] != post[x-1] && curcon != backspace){
-			attron(COLOR_PAIR(4));
-			mvaddch(y,x-1,c);
-			attroff(COLOR_PAIR(4));
+			wattron(tpwin,COLOR_PAIR(2));
+			mvwaddch(tpwin,y+1,x,c);
+			wattroff(tpwin,COLOR_PAIR(2));
+		wrefresh(tpwin);
 			cor=1;
+			++mistakes;
 		}
-
 		refresh();
 		create_keyboard(COLS,LINES,c,cor);
 		if(x == length-1)
@@ -127,15 +134,13 @@ int main() {
 			post[x] = c;
 		}
 		if(curcon == backspace) {
-			//mvaddch(y, x,c);
 			move(y, x);
 		} else {
-			//mvaddch(y,x,c);
 			++x;
 		}
 	}
 	endwin();
 	int time_elps = (unsigned long)time(NULL) - start_time;
-	printf("%d Words in %d Seconds! that is %.2f WPM\n",wc,time_elps,(float)60*((float)wc / (float)time_elps)) ;
+	printf("%d Words in %d Seconds! that is %.2f WPM, you made %d Mistakes\n",wc,time_elps,(float)60*((float)wc / (float)time_elps), mistakes) ;
 	return 0;
 }
