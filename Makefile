@@ -1,5 +1,5 @@
 CC ?= gcc
-LDFLAGS = -lcurses -ltinfo -static
+LDFLAGS = -lcurses
 STD = -ansi -std=c90 -pedantic
 
 all:
