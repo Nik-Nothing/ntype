@@ -42,7 +42,6 @@ void generate_giberish(char** buf,int len) {
 	int ran;
 	ran = (rand() % 1000);
 	strcpy(buf[len],en_dict[ran]);
-	//strcat(buf[len],"\0");
 }
 
 int check_word(char** buf_pre,char** buf_post,int wp) {
@@ -52,6 +51,24 @@ int check_word(char** buf_pre,char** buf_post,int wp) {
 			return 1;
 	return 0;
 }
+
+int print_pre(char ** words_pre,WINDOW* tpwin,int words, int max,int wln){
+	int wcc=-1,wcc_off=0,y=0,yw=0;
+
+	wattron(tpwin,COLOR_PAIR(3));
+	while(++wcc < words) {
+			if((wcc_off + strlen(words_pre[wcc]))> max){
+				++y;
+				yw = y-wln;
+				wcc_off = 0;
+			}
+			if(y >= wln)
+				mvwaddstr(tpwin,yw,wcc_off,words_pre[wcc]);
+			wcc_off += (strlen(words_pre[wcc])+1);
+	}
+	wattroff(tpwin,COLOR_PAIR(3));
+}
+
 
 int main() {
 	int started = 0,start_time,wc = 50, y = 0, z,w,g,f, length, mistakes = 0, cor = 0, *mistake_pos, time_elps, hide_lines;
@@ -71,6 +88,7 @@ int main() {
 	init_pair(1,COLOR_BLACK,COLOR_GREEN);
 	init_pair(2,COLOR_BLACK,COLOR_RED);
 	init_pair(3,COLOR_CYAN,COLOR_BLACK);
+	init_pair(4,COLOR_BLACK,COLOR_BLACK);
 	
 	/*pre = malloc(sizeof(char) * 1000);
 	post = malloc(sizeof(char) * 1000);*/
@@ -97,51 +115,44 @@ int main() {
 		refresh();
 		create_newwin(LINES-(LINES/14)*4,COLS,0,0,0,0);
 		tpwin = newwin((LINES-(LINES/14)*4)-4,COLS-6,2,3);
-		wattron(tpwin,COLOR_PAIR(3));
-		//mvwaddstr(tpwin,y,0,pre);
-		int yw=0;
-		int wcc=-1,wcc_off=0;
-		y=0;
-		while(++wcc < words) {
+		int rep=0;
+		do {
+			werase(tpwin);
+			print_pre(words_pre,tpwin,words,COLS-6,wln);
+			int wcc=-1,wcc_off=0,yw=0,y=0;
+			rep = 0;
+			while(++wcc < current_word+1) {
 				if((wcc_off + strlen(words_pre[wcc]))> COLS-6){
 					++y;
-					yw = y-wln;
+					if(y>wln){
+						++wln;
+						rep = 1;
+					}
 					wcc_off = 0;
 				}
-				if(y >= wln)
-					mvwaddstr(tpwin,yw,wcc_off,words_pre[wcc]);
-				wcc_off += (strlen(words_pre[wcc])+1);
-		}
-		wattroff(tpwin,COLOR_PAIR(3));
-		y=0,wcc=-1,wcc_off=0;
-		while(++wcc < current_word+1) {
-			if((wcc_off + strlen(words_pre[wcc]))> COLS-6){
-				++y;
-				if(y>wln)
-					++wln;
-				wcc_off = 0;
-			}
-			if(y >= wln){
-				if(wcc < current_word)
-					wattron(tpwin,COLOR_PAIR(1));
-				mvwaddstr(tpwin,0,wcc_off,words_post[wcc]);
-				if(wcc < current_word)
-					wattroff(tpwin,COLOR_PAIR(1));
-				
-				if(wcc == current_word) {
-					z = -1;
-					while(++z < mistakes) {
-						wattron(tpwin,COLOR_PAIR(2));
-						mvwaddch(tpwin,0,wcc_off + mistake_pos[z],mis[z]);
-						wattroff(tpwin,COLOR_PAIR(2));
+				if(y >= wln){
+					if(wcc < current_word)
+						wattron(tpwin,COLOR_PAIR(4));
+					mvwaddstr(tpwin,0,wcc_off,words_post[wcc]);
+					if(wcc < current_word)
+						wattroff(tpwin,COLOR_PAIR(4));
+					
+					if(wcc == current_word) {
+						z = -1;
+							while(++z < mistakes) {
+							wattron(tpwin,COLOR_PAIR(2));
+							mvwaddch(tpwin,0,wcc_off + mistake_pos[z],mis[z]);
+							wattroff(tpwin,COLOR_PAIR(2));
+						}
 					}
 				}
+					wcc_off += (strlen(words_pre[wcc]));
+				if(y >= wln)
+					mvwaddch(tpwin,y,wcc_off,' ');
+					wcc_off += 1;
 			}
-				wcc_off += (strlen(words_pre[wcc]));
-			if(y >= wln)
-				mvwaddch(tpwin,y,wcc_off,' ');
-				wcc_off += 1;
 		}
+		while (rep == 1);
 		wrefresh(tpwin);
 		refresh();
 		create_keyboard(COLS,LINES,c,cor);
@@ -172,11 +183,13 @@ int main() {
 					words_post[current_word][current_word_position] = '\0';
 					c = '\0';
 					curcon = backspace;
-					break;
 				}
+				break;
 			default:
-			if(curcon != eow)
+			if(curcon != eow && current_word_position < strlen(words_pre[current_word]))
 				words_post[current_word][current_word_position] = c;
+			else
+				cor = 1;
 		}
 		if(curcon == backspace){
 			if(mistakes > 0 && mistake_pos[mistakes-1] == current_word_position)
@@ -187,7 +200,7 @@ int main() {
 					++current_word;
 					curcon = eow;
 			}
-			if(curcon != eow){
+			if(curcon != eow && current_word_position < strlen(words_pre[current_word])){
 				if(c != words_pre[current_word][current_word_position]) {
 					cor = 1;
 					mistake_pos[mistakes] = current_word_position;
@@ -198,11 +211,12 @@ int main() {
 						--mistakes;
 					cor = 0;
 				}
-				if(current_word_position < strlen(words_pre[current_word]))
-					++current_word_position;
+				++current_word_position;
 			}
-		} else if(curcon == eow && c == ' ')
+		} else if(curcon == eow && c == ' '){
+			cor = 0;
 			curcon = write;
+		}
 	}
 	endwin();
 	time_elps = (unsigned long)time(NULL) - start_time;
