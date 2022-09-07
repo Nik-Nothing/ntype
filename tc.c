@@ -7,7 +7,7 @@
 
 #include"dict.h"
 
-enum control{write,backspace};
+enum control{write,backspace,eow};
 
 WINDOW *create_newwin(int h,int w,int sy ,int sx,short pressed,short cor) {
 	WINDOW *local_win;
@@ -38,19 +38,25 @@ void create_keyboard(int len, int hei,char in,short cor) {
 	create_newwin(hei / 14, (hei / 8) * 5, hei-(hei/14), (len / 2) - ((hei /14)*4),in == ' ' ? 1 : 0,cor);
 }
 
-void generate_giberish(char* buf,int len) {
+void generate_giberish(char** buf,int len) {
 	int ran;
-	srand(time(NULL));
-	while(--len > 0) {
-		ran = (rand() % 1000);
-		strcat(buf,en_dict[ran]);
-		strcat(buf," ");
-	}
+	ran = (rand() % 1000);
+	strcpy(buf[len],en_dict[ran]);
+	//strcat(buf[len],"\0");
+}
+
+int check_word(char** buf_pre,char** buf_post,int wp) {
+	int x=-1;
+	while(++x < strlen(buf_pre[wp]))
+		if(buf_pre[wp][x] != buf_post[wp][x])
+			return 1;
+	return 0;
 }
 
 int main() {
-	int start_time=(unsigned long)time(NULL), wc = 50, x = 0, y = 0, z,w,g,f, length, mistakes = 0, cor = 0, *mistake_pos, time_elps;
-	char c,*pre,*post,*mis;
+	int started = 0,start_time,wc = 50, y = 0, z,w,g,f, length, mistakes = 0, cor = 0, *mistake_pos, time_elps, hide_lines;
+	size_t pre_malloc = 0,post_malloc = 0,mis_malloc = 0,mistake_pos_malloc = 0;
+	char c,*mis;
 	enum control curcon = write;
 	WINDOW *tpwin;
 	
@@ -59,86 +65,144 @@ int main() {
 	cbreak();
 	noecho();
 	start_color();
+	srand(time(NULL));
 	
 	init_color(COLOR_CYAN,350,350,350);
 	init_pair(1,COLOR_BLACK,COLOR_GREEN);
 	init_pair(2,COLOR_BLACK,COLOR_RED);
 	init_pair(3,COLOR_CYAN,COLOR_BLACK);
 	
-	pre = malloc(sizeof(char) * 10000);
-	post = malloc(sizeof(char) * 10000);
+	/*pre = malloc(sizeof(char) * 1000);
+	post = malloc(sizeof(char) * 1000);*/
 	mis = malloc(sizeof(char) * 1000);
-	mistake_pos = malloc(sizeof(int) * 100);
+	mistake_pos = malloc(sizeof(int) * 1000);
 
-	generate_giberish(pre,wc);
-	length = strlen(pre);
+		int wln=0;
+	// arr of arr
+	char** words_pre = malloc(sizeof(char*) * 100);
+	char** words_post = malloc(sizeof(char*) * 100);
+	
+	int cts=-1;
+	while(++cts < 100){
+		words_pre[cts] = malloc(sizeof(char) * 100);
+		words_post[cts] = malloc(sizeof(char) * 100);
+	}
 
+	int words=-1,current_word = 0,current_word_position = 0;
+	while(++words < 100) {
+		generate_giberish(words_pre,words);
+	}
 	
 	while(1) {
 		refresh();
 		create_newwin(LINES-(LINES/14)*4,COLS,0,0,0,0);
 		tpwin = newwin((LINES-(LINES/14)*4)-4,COLS-6,2,3);
 		wattron(tpwin,COLOR_PAIR(3));
-		mvwaddstr(tpwin,y,0,pre);
+		//mvwaddstr(tpwin,y,0,pre);
+		int yw=0;
+		int wcc=-1,wcc_off=0;
+		y=0;
+		while(++wcc < words) {
+				if((wcc_off + strlen(words_pre[wcc]))> COLS-6){
+					++y;
+					yw = y-wln;
+					wcc_off = 0;
+				}
+				if(y >= wln)
+					mvwaddstr(tpwin,yw,wcc_off,words_pre[wcc]);
+				wcc_off += (strlen(words_pre[wcc])+1);
+		}
 		wattroff(tpwin,COLOR_PAIR(3));
-		mvwaddstr(tpwin,y,0,post);
-		z = -1;
-		while(++z != mistakes) {
-			w = (mistake_pos[z] / (COLS - 6));
-			g = mistake_pos[z] - ( (mistake_pos[z] / (COLS - 6)) * (COLS-6));;
-			wattron(tpwin,COLOR_PAIR(2));
-			mvwaddch(tpwin,w,g,mis[z]);
-			wattroff(tpwin,COLOR_PAIR(2));
+		y=0,wcc=-1,wcc_off=0;
+		while(++wcc < current_word+1) {
+			if((wcc_off + strlen(words_pre[wcc]))> COLS-6){
+				++y;
+				if(y>wln)
+					++wln;
+				wcc_off = 0;
+			}
+			if(y >= wln){
+				if(wcc < current_word)
+					wattron(tpwin,COLOR_PAIR(1));
+				mvwaddstr(tpwin,0,wcc_off,words_post[wcc]);
+				if(wcc < current_word)
+					wattroff(tpwin,COLOR_PAIR(1));
+				
+				if(wcc == current_word) {
+					z = -1;
+					while(++z < mistakes) {
+						wattron(tpwin,COLOR_PAIR(2));
+						mvwaddch(tpwin,0,wcc_off + mistake_pos[z],mis[z]);
+						wattroff(tpwin,COLOR_PAIR(2));
+					}
+				}
+			}
+				wcc_off += (strlen(words_pre[wcc]));
+			if(y >= wln)
+				mvwaddch(tpwin,y,wcc_off,' ');
+				wcc_off += 1;
 		}
 		wrefresh(tpwin);
 		refresh();
 		create_keyboard(COLS,LINES,c,cor);
 		cor = 0;
-		if(x == length-1)
+		if(current_word == words)
 				break;
 		c = getchar();	
-		curcon = write;
+		if(started == 0) {
+			start_time = (unsigned long)time(NULL);
+			started = 1;
+		}
+		if(curcon != eow)
+			curcon = write;
 		switch(c) {
 			case 10: /* Linebreak */
 				c = ' ';
 				break;
 			case 11: /* Tabulator */
-				x += 8;
 				c = ' ';
 				break;
 			case 27: /* Escape */
 				endwin();
 				return 0;
 			case 127: /* Backspace */
-				if(x > 0)
-					--x;
-				else if(y > 0)
-					--y;
-				post[x] = '\0';
-				c = '\0';
-				curcon = backspace;
-				break;
+				if(curcon != eow) {
+					if(current_word_position > 0)
+						--current_word_position;
+					words_post[current_word][current_word_position] = '\0';
+					c = '\0';
+					curcon = backspace;
+					break;
+				}
 			default:
-			post[x] = c;
+			if(curcon != eow)
+				words_post[current_word][current_word_position] = c;
 		}
 		if(curcon == backspace){
-			if(mistakes != 0 && mistake_pos[mistakes-1] == x)
+			if(mistakes > 0 && mistake_pos[mistakes-1] == current_word_position)
 					--mistakes;
-			move(y, x);
-		} else {
-			if(c != pre[x]) {
-				cor = 1;
-				mistake_pos[mistakes] = x;
-				mis[mistakes] = c;
-				++mistakes;
-			} else {
-				f = -1;
-				while(++f != mistakes)
-					if(mistake_pos[f] == x)
-						--mistakes;
+		} else if(curcon == write){
+			if(current_word_position == strlen(words_pre[current_word])-1 && check_word(words_pre,words_post,current_word) == 0) {
+					current_word_position = 0;
+					++current_word;
+					curcon = eow;
 			}
-			++x;
-		}
+			if(curcon != eow){
+				if(c != words_pre[current_word][current_word_position]) {
+					cor = 1;
+					mistake_pos[mistakes] = current_word_position;
+					mis[mistakes] = c;
+					++mistakes;
+				} else {
+					if(mistakes > 0 && mistake_pos[mistakes-1] == current_word_position)
+						--mistakes;
+					cor = 0;
+				}
+				if(current_word_position < strlen(words_pre[current_word]))
+					++current_word_position;
+			}
+		} else if(curcon == eow && c == ' ')
+			curcon = write;
 	}
 	endwin();
 	time_elps = (unsigned long)time(NULL) - start_time;
