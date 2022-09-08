@@ -1,6 +1,6 @@
 CC ?= gcc
-LDFLAGS = -lcurses
-STD = -ansi -std=c90 -pedantic
+LDFLAGS = -lcurses -ltinfo
+STD = -std=c99 -pedantic -Wall
 
 all:
-	${CC} -g tc.c ${STD} ${LDFLAGS} -o tc
+	${CC} -g tc.c ${LDFLAGS} ${STD} -o tc
