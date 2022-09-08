@@ -1,7 +1,9 @@
 #include<stdio.h>
 #include<stdlib.h>
+#include<unistd.h>
 #include<string.h>
 #include<time.h>
+#include<ctype.h>
 
 #include<curses.h>
 
@@ -9,14 +11,14 @@
 
 enum gamemode{undefined,words_count,time_count,endless};
 
-enum control{write,backspace,eow};
+enum control{insert,backspace,eow};
 
 typedef struct settings{
 	bool stall;
 	bool stay_in_one_spot;
 } set;
 
-void quit(int start_time,int mistakes,int wc,bool print,char* custom_log) {
+static void quit(int start_time,int mistakes,int wc,bool print,char* custom_log) {
 	int time_elps = (unsigned long)time(NULL) - start_time;
 	endwin();
 	if(print) {
@@ -28,7 +30,7 @@ void quit(int start_time,int mistakes,int wc,bool print,char* custom_log) {
 	exit(0);
 }
 
-WINDOW *create_newwin(int h,int w,int sy ,int sx,bool pressed,bool hi) {
+static WINDOW *create_newwin(int h,int w,int sy ,int sx,bool pressed,bool hi) {
 	WINDOW *local_win;
 
 	local_win = newwin(h,w,sy,sx);
@@ -39,7 +41,7 @@ WINDOW *create_newwin(int h,int w,int sy ,int sx,bool pressed,bool hi) {
 	return local_win;
 }
 
-void create_keyboard(int len, int hei,char in,bool hi) {
+static void create_keyboard(int len, int hei,char in,bool hi) {
 	int x=-1;
 	char c1[27] = {'q','w','e','r','t','z','u','i','o','p',
 					'a','s','d','f','g','h','j','k','l',
@@ -57,13 +59,13 @@ void create_keyboard(int len, int hei,char in,bool hi) {
 	create_newwin(hei / 14, (hei / 8) * 5, hei-(hei/14), (len / 2) - ((hei /14)*4),in == ' ' ? 1 : 0,hi);
 }
 
-void generate_giberish(char** buf,int len) {
+static void generate_giberish(char** buf,int len) {
 	int ran;
 	ran = (rand() % 1000);
 	strcpy(buf[len],en_dict[ran]);
 }
 
-int check_word(char** buf_pre,char** buf_post,int wp) {
+static int check_word(char** buf_pre,char** buf_post,int wp) {
 	int x=-1;
 	while(++x < strlen(buf_pre[wp]))
 		if(buf_pre[wp][x] != buf_post[wp][x])
@@ -71,7 +73,7 @@ int check_word(char** buf_pre,char** buf_post,int wp) {
 	return 0;
 }
 
-void print_pre(char ** words_pre,WINDOW* tpwin,int words, int max,int wln){
+static void print_pre(char ** words_pre,WINDOW* tpwin,int words, int max,int wln){
 	int wcc=-1,wcc_off=0,y=0,yw=0;
 	wattron(tpwin,COLOR_PAIR(3));
 	while(++wcc < words) {
@@ -86,13 +88,17 @@ void print_pre(char ** words_pre,WINDOW* tpwin,int words, int max,int wln){
 	}
 	wattroff(tpwin,COLOR_PAIR(3));
 }
+char setch(char* c) {
+	*c = getch();
+	return *c;
+}
 
 int main(int argc,char** argv) {
 	bool hi=false;
 	int wln=0,start_time,wc = 50, z, mistakes = 0, *mistake_pos,words=0,current_word = 0,current_word_position = 0,gn_off = 20;
 	char c;
 	enum gamemode gm = undefined;
-	enum control curcon = write;
+	enum control curcon = insert;
 	WINDOW *tpwin;
 
 	int arg=0;
@@ -119,6 +125,7 @@ int main(int argc,char** argv) {
 	curs_set(0);
 	cbreak();
 	noecho();
+	timeout(1);
 	start_color();
 	srand(time(NULL));
 	
@@ -171,7 +178,7 @@ int main(int argc,char** argv) {
 					
 					if(wcc == current_word) {
 						z = -1;
-							while(++z < mistakes) {
+						while(++z < mistakes) {
 							wattron(tpwin,COLOR_PAIR(2));
 							mvwaddch(tpwin,0,wcc_off + mistake_pos[z],words_pre[current_word][mistake_pos[z]]);
 							wattroff(tpwin,COLOR_PAIR(2));
@@ -193,11 +200,16 @@ int main(int argc,char** argv) {
 			generate_giberish(words_pre,words);
 			}while(++words < before + gn_off);
 		}
-		c = getchar();	
+		while(setch(&c) < 1 ) {
+			if(gm == time_count && start_time != 0 && (unsigned long)time(NULL) > ( start_time + 15)){
+				quit(start_time,mistakes,wc,true,NULL);
+			}
+		}
+		//c = getchar();
 		if(start_time == 0)
 			start_time = (unsigned long)time(NULL);
 		if(curcon != eow)
-			curcon = write;
+			curcon = insert;
 		switch(c) {
 			case 10: /* Linebreak */
 				c = ' ';
@@ -225,7 +237,7 @@ int main(int argc,char** argv) {
 		if(curcon == backspace){
 			if(mistakes > 0 && mistake_pos[mistakes-1] == current_word_position)
 					--mistakes;
-		} else if(curcon == write){
+		} else if(curcon == insert){
 			if(current_word_position == strlen(words_pre[current_word])-1 && check_word(words_pre,words_post,current_word) == 0) {
 					current_word_position = 0;
 					++current_word;
@@ -245,7 +257,7 @@ int main(int argc,char** argv) {
 			}
 		} else if(curcon == eow && c == ' '){
 			hi = false;
-			curcon = write;
+			curcon = insert;
 		}
 	}
 }
