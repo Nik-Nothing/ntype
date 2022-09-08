@@ -59,10 +59,15 @@ static void create_keyboard(int len, int hei,char in,bool hi) {
 	create_newwin(hei / 14, (hei / 8) * 5, hei-(hei/14), (len / 2) - ((hei /14)*4),in == ' ' ? 1 : 0,hi);
 }
 
-static void generate_giberish(char** buf,int len) {
+static void generate_giberish(char** buf,int len,enum dict dic) {
 	int ran;
-	ran = (rand() % 1000);
-	strcpy(buf[len],en_dict[ran]);
+	if(dic == en) {
+		ran = (rand() % 1000);
+		strcpy(buf[len],en_dict[ran]);
+	} else if(dic == unix) {
+		ran = (rand() % 107);
+		strcpy(buf[len],unix_dict[ran]);
+	}
 }
 
 static int check_word(char** buf_pre,char** buf_post,int wp) {
@@ -158,7 +163,7 @@ int main(int argc,char** argv) {
 	}while(++cts < 100);
 	cts = 0;
 	do {
-		generate_giberish(words_pre,cts);
+		generate_giberish(words_pre,cts,unix);
 	}while(++cts < words);
 	
 	while(1) {
@@ -208,7 +213,7 @@ int main(int argc,char** argv) {
 		if((gm == endless || gm == time_count) && current_word == words - gn_off) {
 			int before = words;
 			do {
-				generate_giberish(words_pre,words);
+				generate_giberish(words_pre,words,unix);
 			}while(++words < before + gn_off);
 		}
 		while(setch(&c) < 1 ) {
