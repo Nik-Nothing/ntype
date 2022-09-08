@@ -101,9 +101,26 @@ static char setch(char* c) {
 	*c = (char)getch();
 	return *c;
 }
+static void realloc_buffers(char*** words_pre,char*** words_post,size_t * buf_alloc,size_t buf_alloc_off) {
+	size_t cts = *buf_alloc;
+	char ** words_pre_de = *words_pre;
+	char ** words_post_de = *words_post;
+	words_pre_de = realloc(words_pre_de,sizeof(char*) * (*buf_alloc + buf_alloc_off));
+	words_post_de = realloc(words_post_de,sizeof(char*) * (*buf_alloc + buf_alloc_off));
+	
+	do{
+		words_pre_de[cts] = malloc(sizeof(char) * 25);
+		words_post_de[cts] = malloc(sizeof(char) * 25);
+	}while(++cts < *buf_alloc+buf_alloc_off);
+	*buf_alloc += buf_alloc_off;
+	*words_pre = words_pre_de;
+	*words_post = words_post_de;
+}
 
 int main(int argc,char** argv) {
 	bool hi=false;
+	size_t buf_alloc_off = 50;
+	size_t buf_alloc = 50;
 	unsigned long start_time = 0,timer = 0;
 	unsigned int mistakes_total = 0,z,mistakes = 0,y,wln = 0,cts = 0,current_word_position = 0,*mistake_pos,wcc_off,current_word = 0,words = 0,gn_off = 20,wcc;
 	char c = '\0',**words_pre,**words_post;
@@ -154,7 +171,7 @@ int main(int argc,char** argv) {
 	if(tt || timer == 0)
 		timer = 15;
 	if(ww || words == 0)
-		words = 15;
+		words = 40;
 	if(gm == gm_undefined)
 		gm = words_count;
 	if(dic == d_undefined)
@@ -176,14 +193,14 @@ int main(int argc,char** argv) {
 	
 	mistake_pos = malloc(sizeof(int) * 20);
 
-	words_pre = malloc(sizeof(char*) * 100);
-	words_post = malloc(sizeof(char*) * 100);
+	words_pre = malloc(sizeof(char*) * buf_alloc_off);
+	words_post = malloc(sizeof(char*) * buf_alloc_off);
 	
 	cts=0;
 	do{
 		words_pre[cts] = malloc(sizeof(char) * 25);
 		words_post[cts] = malloc(sizeof(char) * 25);
-	}while(++cts < 100);
+	}while(++cts < buf_alloc);
 	cts = 0;
 	do {
 		generate_giberish(words_pre,cts,dic);
@@ -237,6 +254,8 @@ int main(int argc,char** argv) {
 				quit(start_time,mistakes_total,words,true,NULL);
 		if((gm == endless || gm == time_count) && current_word == words - gn_off) {
 			unsigned int before = words;
+			if(buf_alloc < before + gn_off)
+				realloc_buffers(&words_pre,&words_post,&buf_alloc,buf_alloc_off);
 			do {
 				generate_giberish(words_pre,words,dic);
 			}while(++words < before + gn_off);
