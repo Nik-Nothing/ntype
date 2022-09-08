@@ -95,13 +95,14 @@ char setch(char* c) {
 
 int main(int argc,char** argv) {
 	bool hi=false;
-	int wln=0,start_time,wc = 50, z, mistakes = 0, *mistake_pos,words=0,current_word = 0,current_word_position = 0,gn_off = 20;
+	int wln=0,timer = 0,start_time, z, mistakes = 0, *mistake_pos,words=0,current_word = 0,current_word_position = 0,gn_off = 20;
 	char c;
 	enum gamemode gm = undefined;
 	enum control curcon = insert;
 	WINDOW *tpwin;
 
 	int arg=0;
+	bool tt = false,ww = false;
 	while(++arg < argc) {
 		if(strcmp(argv[arg],"--help")==0 || strcmp(argv[arg],"-h")==0) {
 			quit(0,0,0,true,"help\n");
@@ -115,9 +116,19 @@ int main(int argc,char** argv) {
 			gm = endless;
 		} else if(strcmp(argv[arg],"--dont-stall")==0 || strcmp(argv[arg],"-s")==0) {
 			
+		} else if(tt) {
+			timer = atoi(argv[arg]);
+			tt = false;
+		} else if(ww) {
+			words = atoi(argv[arg]);
+			ww = false;
 		} else
 			quit(0,0,0,true,"invalid argument\n");
 	}
+	if(tt || timer == 0)
+		timer = 15;
+	if(ww || words == 0)
+		words = 15;
 	if(gm == undefined)
 		gm = words_count;
 
@@ -145,10 +156,10 @@ int main(int argc,char** argv) {
 		words_pre[cts] = malloc(sizeof(char) * 25);
 		words_post[cts] = malloc(sizeof(char) * 25);
 	}while(++cts < 100);
-
+	cts = 0;
 	do {
-		generate_giberish(words_pre,words);
-	}while(++words < 40);
+		generate_giberish(words_pre,cts);
+	}while(++cts < words);
 	
 	while(1) {
 		refresh();
@@ -193,19 +204,18 @@ int main(int argc,char** argv) {
 		create_keyboard(COLS,LINES,c,hi);
 		hi = false;
 		if(gm == words_count && current_word == words)
-				quit(start_time,mistakes,wc,true,NULL);
+				quit(start_time,mistakes,words,true,NULL);
 		if((gm == endless || gm == time_count) && current_word == words - gn_off) {
 			int before = words;
 			do {
-			generate_giberish(words_pre,words);
+				generate_giberish(words_pre,words);
 			}while(++words < before + gn_off);
 		}
 		while(setch(&c) < 1 ) {
-			if(gm == time_count && start_time != 0 && (unsigned long)time(NULL) > ( start_time + 15)){
-				quit(start_time,mistakes,wc,true,NULL);
+			if(gm == time_count && start_time != 0 && (unsigned long)time(NULL) > ( start_time + timer)){
+				quit(start_time,mistakes,current_word,true,NULL);
 			}
 		}
-		//c = getchar();
 		if(start_time == 0)
 			start_time = (unsigned long)time(NULL);
 		if(curcon != eow)
@@ -218,7 +228,7 @@ int main(int argc,char** argv) {
 				c = ' ';
 				break;
 			case 27: /* Escape */
-				quit(start_time,mistakes,wc,false,NULL);
+				quit(start_time,mistakes,current_word,false,NULL);
 			case 127: /* Backspace */
 				if(curcon != eow) {
 					if(current_word_position > 0)
