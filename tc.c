@@ -210,42 +210,29 @@ int main(int argc,char** argv) {
 		refresh();
 		create_newwin(LINES-(LINES/14)*4,COLS,0,0,0,0);
 		tpwin = newwin((LINES-(LINES/14)*4)-4,COLS-6,2,3);
-		cts=0;
-		do {
-			werase(tpwin);
-			print_pre(words_pre,tpwin,words,(unsigned int)COLS-6,wln);
-			wcc_off=0;
-			y=0;
-			cts = 0;
-				if((wcc_off + strlen(words_pre[0]))> (unsigned int)COLS-6){
-					++y;
-					if(y>wln){
-						++wln;
-						cts = 1;
-					}
-					wcc_off = 0;
-				}
-				if(y >= wln){
-					mvwaddstr(tpwin,0,wcc_off,word_post);
-					
-					if(mistakes > 0) {
-						z = 0;
-						do {
-							wattron(tpwin,COLOR_PAIR(2));
-							mvwaddch(tpwin,0,wcc_off + mistake_pos[z],words_pre[0][mistake_pos[z]]);
-							wattroff(tpwin,COLOR_PAIR(2));
-						}while(++z < mistakes);
-					}
-				}
-					wcc_off += (strlen(words_pre[0])+1);
-		}while (cts == 1);
+		werase(tpwin);
+		print_pre(words_pre,tpwin,words,(unsigned int)COLS-6,wln);
+		wcc_off=0;
+		y=0;
+		if(y >= wln){
+			mvwaddstr(tpwin,0,wcc_off,word_post);
+			if(mistakes > 0) {
+				z = 0;
+				do {
+					wattron(tpwin,COLOR_PAIR(2));
+					mvwaddch(tpwin,0,wcc_off + mistake_pos[z],words_pre[0][mistake_pos[z]]);
+					wattroff(tpwin,COLOR_PAIR(2));
+				}while(++z < mistakes);
+			}
+		}
+		wcc_off += (strlen(words_pre[0])+1);
 		wrefresh(tpwin);
 		refresh();
 		create_keyboard((start_time == 0),COLS,LINES,c,hi,last);
 		last = c;
 		hi = false;
 		if(gm == words_count && current_word_indp == words)
-				quit(start_time,mistakes_total,current_word_indp,true,NULL);
+			quit(start_time,mistakes_total,current_word_indp,true,NULL);
 		while(setch(&c) < 1 )
 			if(gm == time_count && start_time != 0 && (unsigned long)time(NULL) > ( start_time + timer))
 				quit(start_time,mistakes_total,current_word_indp,true,NULL);
