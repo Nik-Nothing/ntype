@@ -10,7 +10,6 @@
 
 #include"dict.h"
 
-
 enum gamemode{gm_undefined,words_count,time_count,endless};
 
 enum control{insert,backspace,eow};
@@ -84,8 +83,8 @@ static int check_word(char** buf_pre,char* buf_post,unsigned int wp) {
 	return 0;
 }
 
-static void print_pre(char ** words_pre,WINDOW* tpwin,unsigned int words, unsigned int max,unsigned int wln){
-	 unsigned int wcc=0,wcc_off=0,y=0,yw=0;
+static void print_pre(char ** words_pre,WINDOW* tpwin,unsigned int words, unsigned int max,unsigned int wln, unsigned int wff_off){
+	 unsigned int wcc=0,wcc_off=wff_off,y=0,yw=0;
 	wattron(tpwin,COLOR_PAIR(3));
 	do {
 			if((wcc_off + strlen(words_pre[wcc])) > max){
@@ -117,15 +116,18 @@ int main(int argc,char** argv) {
 	size_t buf_alloc_off = 50;
 	size_t buf_alloc = 50;
 	unsigned long start_time = 0,timer = 0;
-	unsigned int mistakes_total = 0,z,mistakes = 0,y,wln = 0,cts = 0,current_word_position = 0,*mistake_pos,wcc_off,words = 0;
+	unsigned int mistakes_total = 0,z,mistakes = 0,cts = 0,current_word_position = 0,*mistake_pos,wcc_off,words = 0;
 	unsigned int current_word_indp = 0;
+	unsigned int wff_off = 0;
 	char c = '\0',**words_pre,*word_post,last = '\0';
 	
 	enum gamemode gm = gm_undefined;
 	enum dict dic = d_undefined;
 	enum control curcon = insert;
 	WINDOW *tpwin;
+	
 	s = &s_o;
+	
 	++argv;
 	while(1 < argc--) {
 		if(strcmp(*argv,"--help")==0 || strcmp(*argv,"-h")==0) {
@@ -211,19 +213,16 @@ int main(int argc,char** argv) {
 		create_newwin(LINES-(LINES/14)*4,COLS,0,0,0,0);
 		tpwin = newwin((LINES-(LINES/14)*4)-4,COLS-6,2,3);
 		werase(tpwin);
-		print_pre(words_pre,tpwin,words,(unsigned int)COLS-6,wln);
-		wcc_off=0;
-		y=0;
-		if(y >= wln){
-			mvwaddstr(tpwin,0,wcc_off,word_post);
-			if(mistakes > 0) {
-				z = 0;
-				do {
-					wattron(tpwin,COLOR_PAIR(2));
-					mvwaddch(tpwin,0,wcc_off + mistake_pos[z],words_pre[0][mistake_pos[z]]);
-					wattroff(tpwin,COLOR_PAIR(2));
-				}while(++z < mistakes);
-			}
+		wcc_off= (wff_off - ((wff_off / (unsigned int)(COLS-6)) * (unsigned int)(COLS-6)));
+		print_pre(words_pre,tpwin,words,(unsigned int)COLS-6,0,wcc_off);
+		mvwaddstr(tpwin,0,wcc_off,word_post);
+		if(mistakes > 0) {
+			z = 0;
+			do {
+				wattron(tpwin,COLOR_PAIR(2));
+				mvwaddch(tpwin,0,wcc_off + mistake_pos[z],words_pre[0][mistake_pos[z]]);
+				wattroff(tpwin,COLOR_PAIR(2));
+			}while(++z < mistakes);
 		}
 		wcc_off += (strlen(words_pre[0])+1);
 		wrefresh(tpwin);
@@ -274,6 +273,8 @@ int main(int argc,char** argv) {
 						++current_word_indp;
 						curcon = eow;
 						mistakes = 0;
+						if(!s->stay)
+							wff_off += strlen(word_post)+1;
 						shift_buffers(words_pre,word_post,buf_alloc);
 						if(gm == time_count || gm == endless)
 							generate_giberish(words_pre,words-1,en);
