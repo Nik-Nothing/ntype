@@ -17,7 +17,7 @@ enum control{insert,backspace,eow};
 
 typedef struct settings{
 	bool stall;
-	bool stay_in_one_spot;
+	bool stay;
 } set;
 
 static noreturn void quit(unsigned long start_time,unsigned int mistakes,unsigned int wc,bool print,char* custom_log) {
@@ -44,14 +44,15 @@ static WINDOW *create_newwin(int h,int w,int sy ,int sx,bool pressed,bool hi) {
 	return local_win;
 }
 
-static void create_keyboard(int len, int hei,char in,bool hi) {
+static void create_keyboard(bool init,int len, int hei,char in,bool hi, char last) {
 	int x=-1;
 	char c1[27] = {'q','w','e','r','t','z','u','i','o','p',
 					'a','s','d','f','g','h','j','k','l',
 					  'y','x','c','v','b','n','m',','};
 	int hr = 4,ofs=0,idp=0;
 	while(++x != 27) {
-		create_newwin(hei / 14, hei / 8,hei-(hei / 14)*hr,((hei / 8) * idp) + ((hei / 20) * ofs) + ((len / 2) - (hei / 8)*5),(c1[x] == in),hi);
+		if(init || c1[x] == in || c1[x] == last)
+			create_newwin(hei / 14, hei / 8,hei-(hei / 14)*hr,((hei / 8) * idp) + ((hei / 20) * ofs) + ((len / 2) - (hei / 8)*5),(c1[x] == in),hi);
 		++idp;
 		if(x == 9 || x == 18){
 			--hr;
@@ -59,7 +60,8 @@ static void create_keyboard(int len, int hei,char in,bool hi) {
 			idp = 0;
 		}
 	}
-	create_newwin(hei / 14, (hei / 8) * 5, hei-(hei/14), (len / 2) - ((hei /14)*4),in == ' ' ? 1 : 0,hi);
+	if(init || ' ' == in || last == ' ')
+		create_newwin(hei / 14, (hei / 8) * 5, hei-(hei/14), (len / 2) - ((hei /14)*4),in == ' ' ? 1 : 0,hi);
 }
 
 static void generate_giberish(char** buf,unsigned int len,enum dict dic) {
@@ -73,10 +75,10 @@ static void generate_giberish(char** buf,unsigned int len,enum dict dic) {
 	}
 }
 
-static int check_word(char** buf_pre,char** buf_post,unsigned int wp) {
+static int check_word(char** buf_pre,char* buf_post,unsigned int wp) {
 	unsigned int x = 0;
 	do {
-		if(buf_pre[wp][x] != buf_post[wp][x])
+		if(buf_pre[wp][x] != buf_post[x])
 			return 1;
 	}while(++x < strlen(buf_pre[wp]));
 	return 0;
@@ -101,70 +103,70 @@ static char setch(char* c) {
 	*c = (char)getch();
 	return *c;
 }
-static void realloc_buffers(char*** words_pre,char*** words_post,size_t * buf_alloc,size_t buf_alloc_off) {
-	size_t cts = *buf_alloc;
-	char ** words_pre_de = *words_pre;
-	char ** words_post_de = *words_post;
-	words_pre_de = realloc(words_pre_de,sizeof(char*) * (*buf_alloc + buf_alloc_off));
-	words_post_de = realloc(words_post_de,sizeof(char*) * (*buf_alloc + buf_alloc_off));
-	
-	do{
-		words_pre_de[cts] = malloc(sizeof(char) * 25);
-		words_post_de[cts] = malloc(sizeof(char) * 25);
-	}while(++cts < *buf_alloc+buf_alloc_off);
-	*buf_alloc += buf_alloc_off;
-	*words_pre = words_pre_de;
-	*words_post = words_post_de;
+static void shift_buffers(char ** words_pre,char* word_post,size_t alloc) {
+	int ctl = -1;
+	memmove(words_pre, words_pre+1,sizeof(words_pre)*(alloc));
+	words_pre[alloc-1] = malloc(sizeof(char*));
+	while(++ctl < 25)
+		*(word_post++) = '\0';
 }
 
 int main(int argc,char** argv) {
-	bool hi=false;
+	set *s,s_o = { .stall = false, .stay = false };
+	bool hi=false,tt = false,ww = false,dd = false;
 	size_t buf_alloc_off = 50;
 	size_t buf_alloc = 50;
 	unsigned long start_time = 0,timer = 0;
-	unsigned int mistakes_total = 0,z,mistakes = 0,y,wln = 0,cts = 0,current_word_position = 0,*mistake_pos,wcc_off,current_word = 0,words = 0,gn_off = 20,wcc;
-	char c = '\0',**words_pre,**words_post;
+	unsigned int mistakes_total = 0,z,mistakes = 0,y,wln = 0,cts = 0,current_word_position = 0,*mistake_pos,wcc_off,words = 0;
+	unsigned int current_word_indp = 0;
+	char c = '\0',**words_pre,*word_post,last = '\0';
+	
 	enum gamemode gm = gm_undefined;
 	enum dict dic = d_undefined;
 	enum control curcon = insert;
 	WINDOW *tpwin;
-
-	int arg=0;
-	bool tt = false,ww = false,dd = false;
-	while(++arg < argc) {
-		if(strcmp(argv[arg],"--help")==0 || strcmp(argv[arg],"-h")==0) {
+	s = &s_o;
+	++argv;
+	while(1 < argc--) {
+		if(strcmp(*argv,"--help")==0 || strcmp(*argv,"-h")==0) {
 			quit(0,0,0,true,"help\n");
-		} else if(strcmp(argv[arg],"--version")==0 || strcmp(argv[arg],"-v")==0) {
+		} else if(strcmp(*argv,"--version")==0 || strcmp(*argv,"-v")==0) {
 			quit(0,0,0,true,"Typing Curses V0\n");
-		} else if(strcmp(argv[arg],"--words")==0 || strcmp(argv[arg],"-w")==0) {
+		} else if(strcmp(*argv,"--words")==0 || strcmp(*argv,"-w")==0) {
 			gm = words_count;
 			ww = true;
-		} else if(strcmp(argv[arg],"--time")==0 || strcmp(argv[arg],"-t")==0) {
+		} else if(strcmp(*argv,"--time")==0 || strcmp(*argv,"-t")==0) {
 			gm = time_count;
 			tt = true;
-		} else if(strcmp(argv[arg],"--endless")==0 || strcmp(argv[arg],"-e")==0) {
+		} else if(strcmp(*argv,"--endless")==0 || strcmp(*argv,"-e")==0) {
 			gm = endless;
-		} else if(strcmp(argv[arg],"--dictionary")==0 || strcmp(argv[arg],"-d")==0) {
+		} else if(strcmp(*argv,"--dictionary")==0 || strcmp(*argv,"-d")==0) {
 			dd = true;
+		} else if(strcmp(*argv,"--stay-inplace")==0 || strcmp(*argv,"-S")==0) {
+			s->stay = true;
+		} else if(strcmp(*argv,"--stall")==0 || strcmp(*argv,"-s")==0) {
+			s->stall = true;
 		} else if(tt) {
-			int t = atoi(argv[arg]);
+			int t = atoi(*argv);
 			if(t < 0)
 				quit(0,0,0,true,"invalid time\n");
 			else
 				timer = (unsigned int)t;
 			tt = false;
 		} else if(ww) {
-			int t = atoi(argv[arg]);
+			int t = atoi(*argv);
 			if(t < 0)
 				quit(0,0,0,true,"invalid time\n");
 			else
 				words = (unsigned int)t;
 			ww = false;
 		} else if(dd) {
-			if(strcmp(argv[arg],"en") == 0)
+			if(strcmp(*argv,"en") == 0)
 				dic = en;
-			else if(strcmp(argv[arg],"unix") == 0)
+			else if(strcmp(*argv,"unix") == 0)
 				dic = unix;
+			else
+				quit(0,0,0,true,"dictionary not found\n");
 		} else
 			quit(0,0,0,true,"invalid argument\n");
 	}
@@ -176,7 +178,6 @@ int main(int argc,char** argv) {
 		gm = words_count;
 	if(dic == d_undefined)
 		dic = en;
-
 	initscr();
 	curs_set(0);
 	cbreak();
@@ -194,12 +195,11 @@ int main(int argc,char** argv) {
 	mistake_pos = malloc(sizeof(int) * 20);
 
 	words_pre = malloc(sizeof(char*) * buf_alloc_off);
-	words_post = malloc(sizeof(char*) * buf_alloc_off);
+	word_post = malloc(sizeof(char) * 25);
 	
 	cts=0;
 	do{
 		words_pre[cts] = malloc(sizeof(char) * 25);
-		words_post[cts] = malloc(sizeof(char) * 25);
 	}while(++cts < buf_alloc);
 	cts = 0;
 	do {
@@ -214,12 +214,10 @@ int main(int argc,char** argv) {
 		do {
 			werase(tpwin);
 			print_pre(words_pre,tpwin,words,(unsigned int)COLS-6,wln);
-			wcc=0;
 			wcc_off=0;
 			y=0;
 			cts = 0;
-			do {
-				if((wcc_off + strlen(words_pre[wcc]))> (unsigned int)COLS-6){
+				if((wcc_off + strlen(words_pre[0]))> (unsigned int)COLS-6){
 					++y;
 					if(y>wln){
 						++wln;
@@ -228,43 +226,29 @@ int main(int argc,char** argv) {
 					wcc_off = 0;
 				}
 				if(y >= wln){
-					if(wcc < current_word)
-						wattron(tpwin,COLOR_PAIR(4));
-					mvwaddstr(tpwin,0,wcc_off,words_post[wcc]);
-					if(wcc < current_word)
-						wattroff(tpwin,COLOR_PAIR(4));
+					mvwaddstr(tpwin,0,wcc_off,word_post);
 					
-					if(wcc == current_word && mistakes > 0) {
+					if(mistakes > 0) {
 						z = 0;
 						do {
 							wattron(tpwin,COLOR_PAIR(2));
-							mvwaddch(tpwin,0,wcc_off + mistake_pos[z],words_pre[current_word][mistake_pos[z]]);
+							mvwaddch(tpwin,0,wcc_off + mistake_pos[z],words_pre[0][mistake_pos[z]]);
 							wattroff(tpwin,COLOR_PAIR(2));
 						}while(++z < mistakes);
 					}
 				}
-					wcc_off += (strlen(words_pre[wcc])+1);
-			}while(++wcc < current_word+1);
+					wcc_off += (strlen(words_pre[0])+1);
 		}while (cts == 1);
 		wrefresh(tpwin);
 		refresh();
-		create_keyboard(COLS,LINES,c,hi);
+		create_keyboard((start_time == 0),COLS,LINES,c,hi,last);
+		last = c;
 		hi = false;
-		if(gm == words_count && current_word == words)
-				quit(start_time,mistakes_total,words,true,NULL);
-		if((gm == endless || gm == time_count) && current_word == words - gn_off) {
-			unsigned int before = words;
-			if(buf_alloc < before + gn_off)
-				realloc_buffers(&words_pre,&words_post,&buf_alloc,buf_alloc_off);
-			do {
-				generate_giberish(words_pre,words,dic);
-			}while(++words < before + gn_off);
-		}
-		while(setch(&c) < 1 ) {
-			if(gm == time_count && start_time != 0 && (unsigned long)time(NULL) > ( start_time + timer)){
-				quit(start_time,mistakes_total,current_word,true,NULL);
-			}
-		}
+		if(gm == words_count && current_word_indp == words)
+				quit(start_time,mistakes_total,current_word_indp,true,NULL);
+		while(setch(&c) < 1 )
+			if(gm == time_count && start_time != 0 && (unsigned long)time(NULL) > ( start_time + timer))
+				quit(start_time,mistakes_total,current_word_indp,true,NULL);
 		if(start_time == 0)
 			start_time = (unsigned long)time(NULL);
 		if(curcon != eow)
@@ -277,19 +261,19 @@ int main(int argc,char** argv) {
 				c = ' ';
 				break;
 			case 27: /* Escape */
-				quit(start_time,mistakes_total,current_word,true,NULL);
+				quit(start_time,mistakes_total,current_word_indp,true,NULL);
 			case 127: /* Backspace */
 				if(curcon != eow) {
 					if(current_word_position > 0)
 						--current_word_position;
-					words_post[current_word][current_word_position] = '\0';
+					word_post[current_word_position] = '\0';
 					c = '\0';
 					curcon = backspace;
 				}
 				break;
 			default:
-			if(curcon != eow && current_word_position < strlen(words_pre[current_word]))
-				words_post[current_word][current_word_position] = c;
+			if(curcon != eow && current_word_position < strlen(words_pre[0]))
+				word_post[current_word_position] = c;
 			else
 				hi = true;
 		}
@@ -297,13 +281,19 @@ int main(int argc,char** argv) {
 			if(mistakes > 0 && mistake_pos[mistakes-1] == current_word_position)
 					--mistakes;
 		} else if(curcon == insert){
-			if(current_word_position == strlen(words_pre[current_word])-1 && check_word(words_pre,words_post,current_word) == 0) {
-					current_word_position = 0;
-					++current_word;
-					curcon = eow;
+			if(current_word_position == strlen(words_pre[0])-1 ) {
+					if(check_word(words_pre,word_post,0) == 0 || !s->stall) {
+						current_word_position = 0;
+						++current_word_indp;
+						curcon = eow;
+						mistakes = 0;
+						shift_buffers(words_pre,word_post,buf_alloc);
+						if(gm == time_count || gm == endless)
+							generate_giberish(words_pre,words-1,en);
+					}
 			}
-			if(curcon != eow && current_word_position < strlen(words_pre[current_word])){
-				if(c != words_pre[current_word][current_word_position]) {
+			if(curcon != eow && current_word_position < strlen(words_pre[0])){
+				if(c != words_pre[0][current_word_position]) {
 					hi = true;
 					mistake_pos[mistakes] = current_word_position;
 					++mistakes;
