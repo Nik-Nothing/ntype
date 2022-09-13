@@ -333,8 +333,8 @@ int main(int argc, char **argv)
 						if (!s->stay)
 						{
 							uint wff_off_b = wff_off;
-							wff_off += strlen(bfs->post)+1;
-							if(wff_off_b > wff_off - (wff_off / (((uint) COLS - 6)) * (uint) COLS - 6))
+							wff_off += strlen(bfs->pre[0])+1;
+							if(1 <= ((wff_off + strlen(bfs->pre[1]))) / ((uint) COLS - 6))
 								wff_off = 0;
 						}
 						shift_buffers(bfs);
