@@ -1,7 +1,7 @@
 #include <curses.h>
 
 #include "macros.h"
-#include "bfs.h"
+#include "tc.h"
 
 WINDOW *create_newwin(int h, int w, int sy, int sx)
 {

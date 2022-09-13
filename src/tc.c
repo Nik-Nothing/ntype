@@ -10,53 +10,7 @@
 #include <curses.h>
 
 #include "macros.h"
-#include "dict.h"
-#include "bfs.h"
-#include "mem.h"
-#include "kb.h"
-
-typedef enum gamemd
-{
-	gm_undefined,
-	words_count,
-	time_count,
-	endless
-}
-gamemode;
-
-typedef enum contl
-{
-	unstarted,
-	insert,
-	backspace,
-	eow
-}
-control;
-
-uint	ctl;
-
-typedef struct settings
-{
-	gamemode	gm;
-	enum		dict dic;
-	bool		stall;
-	bool		stay;
-}
-set;
-
-
-typedef struct runtime_info
-{
-	uint	words;
-	uint	current_word;
-	uint	mistakes_total;
-	ulong	start_time;
-	ulong	timer;
-	WINDOW	*tpwin;
-	WINDOW	*rtwin;
-	control	curcon;
-}
-rt_info;
+#include "tc.h"
 
 static void curses_init()
 {
@@ -94,27 +48,9 @@ static void noreturn quit(rt_info *rti, bool print, char *custom_log)
 	exit(0);
 }
 
-
-
-static void generate_giberish(rt_info *rti, buffs *bfs, set *s, uint len)
-{
-	int ran;
-	
-	if (s->dic == en)
-	{
-		ran = (rand() % 1000);
-		strcpy(bfs->pre[len], en_dict[ran]);
-	} 
-	elif (s->dic == unix)
-	{
-		ran = (rand() % 107);
-		strcpy(bfs->pre[len], unix_dict[ran]);
-	}
-}
-
 static int check_word(buffs *bfs)
 {
-	ctl = 0;
+	uint ctl = 0;
 	
 	do
 		if (bfs->pre[0][ctl] != bfs->post[ctl])
@@ -127,7 +63,7 @@ static void print_pre(rt_info *rti, buffs *bfs, uint max, uint wln, uint wff_off
 {
 	uint wcc_off = wff_off, y = 0, yw = 0;
 
-	ctl = 0;
+	uint ctl = 0;
 	wattron(rti->tpwin, COLOR_PAIR(3));
 	do 
 	{
@@ -147,7 +83,7 @@ static void print_pre(rt_info *rti, buffs *bfs, uint max, uint wln, uint wff_off
 
 static void print_post(rt_info *rti, buffs *bfs, uint wff_off, uint mistakes)
 {
-	uint wcc_off = wff_off;
+	uint ctl, wcc_off = wff_off;
 	mvwaddstr(rti->tpwin, 2, wcc_off + 3, bfs->post);
 	if (mistakes > 0)
 	{
@@ -203,7 +139,7 @@ int main(int argc, char **argv)
 	
 	bool	hi=false, tt = false, ww = false, dd = false;
 	uint	mistakes = 0, current_word_position = 0, wcc_off;
-	uint	wff_off = 0;
+	uint	wff_off = 0, ctl = 0;
 	char 	c = '\0', last = '\0';
 	
 	rt_info *rti, rti_o =
@@ -334,8 +270,6 @@ int main(int argc, char **argv)
 		wcc_off += (strlen(bfs->pre[0]) + 1);
 		wrefresh(rti->tpwin);
 		refresh();
-		//create_keyboard((rti->start_time == 0), COLS, LINES, c, hi, last);
-		//init_keyboard(bfs, COLS, LINES);
 		if (rti->curcon == unstarted)
 			init_keyboard(bfs, COLS, LINES);
 		update_keyboard(bfs, COLS, LINES, hi, c, last);

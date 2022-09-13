@@ -3,7 +3,7 @@
 #include <string.h>
 
 #include "macros.h"
-#include "bfs.h"
+#include "tc.h"
 
 void alloc_buffers(buffs *bfs)
 {
