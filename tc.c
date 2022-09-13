@@ -45,6 +45,7 @@ typedef struct buffers
 {
 	char	**pre;
 	char	*post;
+	WINDOW	**kbwin;
 	uint	*mistake_pos;
 }
 buffs;
@@ -75,6 +76,7 @@ static void curses_init()
 	init_pair(2, COLOR_BLACK, COLOR_RED);
 	init_pair(3, COLOR_CYAN, COLOR_BLACK);
 	init_pair(4, COLOR_BLACK, COLOR_BLACK);
+	init_pair(5, COLOR_WHITE, COLOR_BLACK);
 }
 
 static void alloc_buffers(buffs *bfs)
@@ -84,6 +86,7 @@ static void alloc_buffers(buffs *bfs)
 	bfs->mistake_pos = malloc(sizeof(int) * 20);
 	bfs->pre = malloc(sizeof(char *) * 50);
 	bfs->post = malloc(sizeof(char) * 25);
+	bfs->kbwin = malloc(sizeof(WINDOW *) * 30);
 	do
 		bfs->pre[ctl] = malloc(sizeof(char) * 25);
 	while (++ctl < 50);
@@ -119,28 +122,34 @@ static void free_bufs(buffs *bfs)
 	free(bfs->mistake_pos);
 }
 
-static WINDOW *create_newwin(int h, int w, int sy, int sx, bool pressed, bool hi)
+static WINDOW *create_newwin(int h, int w, int sy, int sx)
 {
 	WINDOW *local_win;
 
 	local_win = newwin(h, w, sy, sx);
 	box(local_win, 0, 0);
-	if (pressed)
-		wbkgd(local_win,COLOR_PAIR(hi ? 2 : 1));
 	wrefresh(local_win);
 	return local_win;
 }
 
-static void create_keyboard(bool init, int len, int hei, char in, bool hi, char last)
+static void update_win(WINDOW* local_win, bool pressed, bool hi)
 {
-	char	c1[27] = {'q', 'w', 'e', 'r', 't', 'z', 'u', 'i', 'o', 'p', 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'y', 'x', 'c', 'v', 'b', 'n', 'm', ','};
+	box(local_win, 0, 0);
+	if (pressed)
+		wbkgd(local_win, COLOR_PAIR(hi ? 2 : 1));
+	else
+		wbkgd(local_win, COLOR_PAIR(5));
+	wrefresh(local_win);
+}
+
+static void init_keyboard(buffs *bfs, int len, int hei)
+{
 	int		hr = 4, ofs = 0, idp = 0;
-	
+
 	ctl = 0;
 	do
 	{
-		if (init || c1[ctl] == in || c1[ctl] == last)
-			create_newwin(hei / 14, hei / 8, hei - (hei / 14) * hr,((hei / 8) * idp) + ((hei / 20) * ofs) + ((len / 2) - (hei / 8) * 5), (c1[ctl] == in), hi);
+		bfs->kbwin[ctl] = create_newwin(hei / 14, hei / 8, hei - (hei / 14) * hr,((hei / 8) * idp) + ((hei / 20) * ofs) + ((len / 2) - (hei / 8) * 5));
 		++idp;
 		if (ctl == 9 || ctl == 18)
 		{
@@ -151,8 +160,31 @@ static void create_keyboard(bool init, int len, int hei, char in, bool hi, char 
 	}
 	while (++ctl != 27);
 	
-	if (init || ' ' == in || last == ' ')
-		create_newwin(hei / 14, (hei / 8) * 5, hei - (hei / 14), (len / 2) - ((hei / 14) * 4),in == ' ' ? 1 : 0, hi);
+	bfs->kbwin[ctl] = create_newwin(hei / 14, (hei / 8) * 5, hei - (hei / 14), (len / 2) - ((hei / 14) * 4));
+}
+
+static void update_keyboard(buffs *bfs, int len, int hei, bool hi, char in, char last)
+{
+	const char	c1[27] = {'q', 'w', 'e', 'r', 't', 'z', 'u', 'i', 'o', 'p', 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'y', 'x', 'c', 'v', 'b', 'n', 'm', ','};
+	int		hr = 4, ofs = 0, idp = 0;
+
+	ctl = 0;
+	do
+	{
+		if (c1[ctl] == in || c1[ctl] == last)
+				update_win(bfs->kbwin[ctl], (c1[ctl] == in), hi);
+		++idp;
+		if (ctl == 9 || ctl == 18)
+		{
+			--hr;
+			++ofs;
+			idp = 0;
+		}
+	}
+	while (++ctl != 27);
+	
+	if (' ' == in || last == ' ')
+		update_win(bfs->kbwin[ctl], in == ' ' ? 1 : 0, hi);
 }
 
 static void generate_giberish(rt_info *rti, buffs *bfs, set *s, uint len)
@@ -171,14 +203,14 @@ static void generate_giberish(rt_info *rti, buffs *bfs, set *s, uint len)
 	}
 }
 
-static int check_word(buffs *bfs, uint wp)
+static int check_word(buffs *bfs)
 {
 	ctl = 0;
 	
 	do
-		if (bfs->pre[wp][ctl] != bfs->post[ctl])
+		if (bfs->pre[0][ctl] != bfs->post[ctl])
 			return 1;
-	while (++ctl < strlen(bfs->pre[wp]));
+	while (++ctl < strlen(bfs->pre[0]));
 	return 0;
 }
 
@@ -248,6 +280,11 @@ static void input_loop(rt_info *rti, buffs *bfs, set *s, char *c)
 			free_bufs(bfs);
 			quit(rti, true, NULL);
 		}
+}
+
+static void print_info(rt_info *rti)
+{
+	
 }
 
 int main(int argc, char **argv)
@@ -377,10 +414,17 @@ int main(int argc, char **argv)
 		generate_giberish(rti, bfs, s, ctl);
 	while (++ctl < rti->words);
 	
+	init_keyboard(bfs, COLS, LINES);
+	
+	rti->tpwin = create_newwin(LINES - (LINES / 14) * 4, COLS, 0, 0);
+	
 	while (1)
 	{
 		refresh();
-		rti->tpwin = create_newwin(LINES - (LINES / 14) * 4, COLS, 0, 0, 0, 0);
+		
+		werase(rti->tpwin);
+		box(rti->tpwin, 0, 0);
+		
 		wcc_off = (wff_off - (((wff_off + (uint) strlen(bfs->pre[0])) / (uint) (COLS - 6)) * (uint) (COLS - 6)));
 		print_pre(rti, bfs, (uint) COLS - 6, 0, wcc_off);
 		print_post(rti, bfs, wcc_off, mistakes);
@@ -388,7 +432,11 @@ int main(int argc, char **argv)
 		wcc_off += (strlen(bfs->pre[0]) + 1);
 		wrefresh(rti->tpwin);
 		refresh();
-		create_keyboard((rti->start_time == 0), COLS, LINES, c, hi, last);
+		//create_keyboard((rti->start_time == 0), COLS, LINES, c, hi, last);
+		//init_keyboard(bfs, COLS, LINES);
+		if (rti->curcon == unstarted)
+			init_keyboard(bfs, COLS, LINES);
+		update_keyboard(bfs, COLS, LINES, hi, c, last);
 		last = c;
 		hi = false;
 		if (s->gm == words_count && rti->current_word == rti->words)
@@ -397,8 +445,9 @@ int main(int argc, char **argv)
 			quit(rti, true, NULL);
 		}
 		input_loop(rti, bfs, s, &c);
-		if (rti->curcon == unstarted)
+		if (rti->curcon == unstarted){
 			rti->start_time = (ulong) time(NULL);
+		}
 		if (rti->curcon != eow)
 			rti->curcon = insert;
 		switch (c)
@@ -437,7 +486,7 @@ int main(int argc, char **argv)
 		{
 			if (current_word_position == strlen(bfs->pre[0]) - 1)
 			{
-					if (check_word(bfs, 0) == 0 || !s->stall)
+					if (check_word(bfs) == 0 || !s->stall)
 					{
 						current_word_position = 0;
 						++rti->current_word;
@@ -449,7 +498,7 @@ int main(int argc, char **argv)
 						if (s->gm == time_count || s->gm == endless)
 							generate_giberish(rti, bfs, s, rti->words-1);
 					}
-					if (check_word(bfs, 0) == 1)
+					elif (check_word(bfs) == 1)
 					{
 						hi = true;
 					}
