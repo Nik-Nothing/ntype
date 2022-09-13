@@ -1,3 +1,3 @@
 Typing Curses
 
-simple typing test using libcurses
+(not so anymore) simple typing test using libcurses
