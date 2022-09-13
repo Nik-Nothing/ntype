@@ -9,8 +9,11 @@
 
 #include <curses.h>
 
-#include "dict.h"
 #include "macros.h"
+#include "dict.h"
+#include "bfs.h"
+#include "mem.h"
+#include "kb.h"
 
 typedef enum gamemd
 {
@@ -41,14 +44,6 @@ typedef struct settings
 }
 set;
 
-typedef struct buffers
-{
-	char	**pre;
-	char	*post;
-	WINDOW	**kbwin;
-	uint	*mistake_pos;
-}
-buffs;
 
 typedef struct runtime_info
 {
@@ -58,6 +53,7 @@ typedef struct runtime_info
 	ulong	start_time;
 	ulong	timer;
 	WINDOW	*tpwin;
+	WINDOW	*rtwin;
 	control	curcon;
 }
 rt_info;
@@ -79,18 +75,6 @@ static void curses_init()
 	init_pair(5, COLOR_WHITE, COLOR_BLACK);
 }
 
-static void alloc_buffers(buffs *bfs)
-{
-	ctl = 0;
-
-	bfs->mistake_pos = malloc(sizeof(int) * 20);
-	bfs->pre = malloc(sizeof(char *) * 50);
-	bfs->post = malloc(sizeof(char) * 25);
-	bfs->kbwin = malloc(sizeof(WINDOW *) * 30);
-	do
-		bfs->pre[ctl] = malloc(sizeof(char) * 25);
-	while (++ctl < 50);
-}
 
 static void noreturn quit(rt_info *rti, bool print, char *custom_log)
 {
@@ -110,82 +94,7 @@ static void noreturn quit(rt_info *rti, bool print, char *custom_log)
 	exit(0);
 }
 
-static void free_bufs(buffs *bfs)
-{
-	ctl = 0;
-	
-	do
-		free(bfs->pre[ctl]);
-	while (++ctl < 50);
-	free(bfs->pre);
-	free(bfs->post);
-	free(bfs->mistake_pos);
-}
 
-static WINDOW *create_newwin(int h, int w, int sy, int sx)
-{
-	WINDOW *local_win;
-
-	local_win = newwin(h, w, sy, sx);
-	box(local_win, 0, 0);
-	wrefresh(local_win);
-	return local_win;
-}
-
-static void update_win(WINDOW* local_win, bool pressed, bool hi)
-{
-	box(local_win, 0, 0);
-	if (pressed)
-		wbkgd(local_win, COLOR_PAIR(hi ? 2 : 1));
-	else
-		wbkgd(local_win, COLOR_PAIR(5));
-	wrefresh(local_win);
-}
-
-static void init_keyboard(buffs *bfs, int len, int hei)
-{
-	int		hr = 4, ofs = 0, idp = 0;
-
-	ctl = 0;
-	do
-	{
-		bfs->kbwin[ctl] = create_newwin(hei / 14, hei / 8, hei - (hei / 14) * hr,((hei / 8) * idp) + ((hei / 20) * ofs) + ((len / 2) - (hei / 8) * 5));
-		++idp;
-		if (ctl == 9 || ctl == 18)
-		{
-			--hr;
-			++ofs;
-			idp = 0;
-		}
-	}
-	while (++ctl != 27);
-	
-	bfs->kbwin[ctl] = create_newwin(hei / 14, (hei / 8) * 5, hei - (hei / 14), (len / 2) - ((hei / 14) * 4));
-}
-
-static void update_keyboard(buffs *bfs, int len, int hei, bool hi, char in, char last)
-{
-	const char	c1[27] = {'q', 'w', 'e', 'r', 't', 'z', 'u', 'i', 'o', 'p', 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'y', 'x', 'c', 'v', 'b', 'n', 'm', ','};
-	int		hr = 4, ofs = 0, idp = 0;
-
-	ctl = 0;
-	do
-	{
-		if (c1[ctl] == in || c1[ctl] == last)
-				update_win(bfs->kbwin[ctl], (c1[ctl] == in), hi);
-		++idp;
-		if (ctl == 9 || ctl == 18)
-		{
-			--hr;
-			++ofs;
-			idp = 0;
-		}
-	}
-	while (++ctl != 27);
-	
-	if (' ' == in || last == ' ')
-		update_win(bfs->kbwin[ctl], in == ' ' ? 1 : 0, hi);
-}
 
 static void generate_giberish(rt_info *rti, buffs *bfs, set *s, uint len)
 {
@@ -259,18 +168,6 @@ static char setch(char *c)
 	return *c;
 }
 
-static void shift_buffers(buffs *bfs)
-{
-	ctl = 0;
-	
-	free(bfs->pre[0]);
-	memmove(bfs->pre, bfs->pre + 1, sizeof(bfs->pre[0]) * 49);
-	bfs->pre[49] = malloc(sizeof(char *));
-	
-	do
-		bfs->post[ctl] = '\0';
-	while (++ctl < 25);
-}
 
 static void input_loop(rt_info *rti, buffs *bfs, set *s, char *c)
 {
@@ -282,7 +179,12 @@ static void input_loop(rt_info *rti, buffs *bfs, set *s, char *c)
 		}
 }
 
-static void print_info(rt_info *rti)
+static void init_info(rt_info *rti, int len, int hei)
+{
+	rti->rtwin = create_newwin(LINES - (LINES / 14) * 4, COLS, 0, 0);
+}
+
+static void update_info(rt_info *rti)
 {
 	
 }
