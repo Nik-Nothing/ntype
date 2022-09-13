@@ -262,8 +262,10 @@ int main(int argc, char **argv)
 		
 		werase(rti->tpwin);
 		box(rti->tpwin, 0, 0);
-		
-		wcc_off = (wff_off - (((wff_off + (uint) strlen(bfs->pre[0])) / (uint) (COLS - 6)) * (uint) (COLS - 6)));
+		if(!s->stay)	
+			wcc_off = wff_off;
+		else
+			wcc_off = 0;
 		print_pre(rti, bfs, (uint) COLS - 6, 0, wcc_off);
 		print_post(rti, bfs, wcc_off, mistakes);
 		
@@ -329,7 +331,12 @@ int main(int argc, char **argv)
 						rti->curcon = eow;
 						mistakes = 0;
 						if (!s->stay)
+						{
+							uint wff_off_b = wff_off;
 							wff_off += strlen(bfs->post)+1;
+							if(wff_off_b > wff_off - (wff_off / (((uint) COLS - 6)) * (uint) COLS - 6))
+								wff_off = 0;
+						}
 						shift_buffers(bfs);
 						if (s->gm == time_count || s->gm == endless)
 							generate_giberish(rti, bfs, s, rti->words-1);
