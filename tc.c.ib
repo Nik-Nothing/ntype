@@ -34,7 +34,7 @@ struct runtime_info
 	WINDOW  *rtwin
 	control curcon
 
-typedef struct runtime_info rt_info;
+typedef struct runtime_info rt_info
 
 struct buffers
 	char    **pre
@@ -50,7 +50,7 @@ enum gamemd
 	time_count
 	endless
 
-typedef enum gamemd gamemode;
+typedef enum gamemd gamemode
 
 
 struct settings
@@ -59,7 +59,7 @@ struct settings
 	bool      stall
 	bool      stay
 
-typedef struct settingsset;
+typedef struct settings set
 
 void alloc_buffers(buffs *bfs)
 	uint ctl = 0
@@ -83,7 +83,7 @@ void free_bufs(buffs *bfs)
 	free(bfs->mistake_pos)
 
 void shift_buffers(buffs *bfs)
-	uint ctl = 0;
+	uint ctl = 0
 	
 	free(bfs->pre[0])
 	memmove(bfs->pre, bfs->pre + 1, sizeof(bfs->pre[0]) * 49)
@@ -94,7 +94,7 @@ void shift_buffers(buffs *bfs)
 	while (++ctl < 25)
 
 void generate_giberish(rt_info *rti, buffs *bfs, set *s, uint len)
-	int ran;
+	int ran
 	
 	if (s->dic == en)
 		ran = (rand() % 1000)
@@ -105,7 +105,7 @@ void generate_giberish(rt_info *rti, buffs *bfs, set *s, uint len)
 
 WINDOW *create_newwin(int h, int w, int sy, int sx)
 	WINDOW *local_win
-
+	
 	local_win = newwin(h, w, sy, sx)
 	box(local_win, 0, 0)
 	wrefresh(local_win)
@@ -120,8 +120,8 @@ void update_win(WINDOW* local_win, bool pressed, bool hi)
 	wrefresh(local_win)
 
 void init_keyboard(buffs *bfs, int len, int hei)
-	int		hr = 4, ofs = 0, idp = 0
-
+	int  hr = 4, ofs = 0, idp = 0
+	
 	uint ctl = 0
 	do
 		bfs->kbwin[ctl] = create_newwin(hei / 14, hei / 8, hei - (hei / 14) * hr,((hei / 8) * idp) + ((hei / 20) * ofs) + ((len / 2) - (hei / 8) * 5))
@@ -137,12 +137,12 @@ void init_keyboard(buffs *bfs, int len, int hei)
 void update_keyboard(buffs *bfs, int len, int hei, bool hi, char in, char last)
 	const char	c1[27] = {'q', 'w', 'e', 'r', 't', 'z', 'u', 'i', 'o', 'p', 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'y', 'x', 'c', 'v', 'b', 'n', 'm', ','}
 	int		hr = 4, ofs = 0, idp = 0
-
+	
 	uint ctl = 0
 	do
 		if (c1[ctl] == in || c1[ctl] == last)
-				update_win(bfs->kbwin[ctl], (c1[ctl] == in), hi);
-		++idp;
+				update_win(bfs->kbwin[ctl], (c1[ctl] == in), hi)
+		++idp
 		if (ctl == 9 || ctl == 18)
 			--hr
 			++ofs
@@ -159,7 +159,7 @@ static void curses_init()
 	noecho()
 	timeout(1)
 	start_color()
-
+	
 	init_color(COLOR_CYAN, 350, 350, 350)
 	init_pair(1, COLOR_BLACK, COLOR_GREEN)
 	init_pair(2, COLOR_BLACK, COLOR_RED)
@@ -170,7 +170,7 @@ static void curses_init()
 static void noreturn quit(rt_info *rti, bool print, char *custom_log)
 	ulong time_elps
 	
-	endwin();
+	endwin()
 	if (print)
 		if (custom_log == NULL)
 			time_elps = (unsigned long) time(NULL) - rti->start_time
@@ -185,12 +185,12 @@ static int check_word(buffs *bfs)
 	do
 		if (bfs->pre[0][ctl] != bfs->post[ctl])
 			return 1
-	while (++ctl < strlen(bfs->pre[0]));
+	while (++ctl < strlen(bfs->pre[0]))
 	return 0
 
 static void print_pre(rt_info *rti, buffs *bfs, uint max, uint wln, uint wff_off)
 	uint wcc_off = wff_off, y = 0, yw = 0
-
+	
 	uint ctl = 0
 	wattron(rti->tpwin, COLOR_PAIR(3))
 	do
@@ -238,7 +238,7 @@ int main(int argc, char **argv)
 		.dic = d_undefined
 		.stall = true
 		.stay = false
-
+	
 	buffs *bfs,bfs_o
 	
 	bool hi=false, tt = false, ww = false, dd = false
@@ -257,7 +257,7 @@ int main(int argc, char **argv)
 	bfs = &bfs_o
 	s = &s_o
 	rti = &rti_o
-
+	
 	while (0 < --argc)
 		++argv
 		if (strcmp(*argv, "--help") == 0 || strcmp(*argv, "-h") == 0)
@@ -319,7 +319,7 @@ int main(int argc, char **argv)
 		s->gm = words_count
 	if (s->dic == d_undefined)
 		s->dic = en
-
+	
 	srand((uint) time(NULL))
 	curses_init()
 	
@@ -358,7 +358,7 @@ int main(int argc, char **argv)
 			free_bufs(bfs)
 			quit(rti, true, NULL)
 		input_loop(rti, bfs, s, &c)
-		if (rti->curcon == unstarted){
+		if (rti->curcon == unstarted)
 			rti->start_time = (ulong) time(NULL)
 		if (rti->curcon != eow)
 			rti->curcon = insert
@@ -376,15 +376,15 @@ int main(int argc, char **argv)
 				if (rti->curcon != eow)
 					if (current_word_position > 0)
 						--current_word_position
-					bfs->post[current_word_position] = '\0';
+					bfs->post[current_word_position] = '\0'
 					c = '\0'
 					rti->curcon = backspace
 				break
 			default:
-			if (rti->curcon != eow && current_word_position < strlen(bfs->pre[0]))
-				bfs->post[current_word_position] = c
-			else
-				hi = true
+				if (rti->curcon != eow && current_word_position < strlen(bfs->pre[0]))
+					bfs->post[current_word_position] = c
+				else
+					hi = true
 		if (rti->curcon == backspace)
 			if (mistakes > 0 && bfs->mistake_pos[mistakes-1] == current_word_position)
 				--mistakes
