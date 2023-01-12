@@ -37,10 +37,10 @@ struct runtime_info
 typedef struct runtime_info rt_info
 
 struct buffers
-	char    **pre
-	char    *post
-	WINDOW  **kbwin
-	uint    *mistake_pos
+	char    pre[100][100]
+	char    post[100]
+	WINDOW  *kbwin[100]
+	uint    mistake_pos[100]
 
 typedef struct buffers buffs
 
@@ -61,37 +61,13 @@ struct settings
 
 typedef struct settings set
 
-void alloc_buffers(buffs *bfs)
-	uint ctl = 0
-	
-	bfs->mistake_pos = malloc(sizeof(int) * 20)
-	bfs->pre = malloc(sizeof(char *) * 50)
-	bfs->post = malloc(sizeof(char) * 25)
-	bfs->kbwin = malloc(sizeof(WINDOW *) * 30)
-	do
-		bfs->pre[ctl] = malloc(sizeof(char) * 25)
-	while (++ctl < 50)
-
-void free_bufs(buffs *bfs)
-	uint ctl = 0
-	
-	do
-		free(bfs->pre[ctl])
-	while (++ctl < 50)
-	free(bfs->pre)
-	free(bfs->post)
-	free(bfs->mistake_pos)
-
 void shift_buffers(buffs *bfs)
 	uint ctl = 0
 	
-	free(bfs->pre[0])
 	memmove(bfs->pre, bfs->pre + 1, sizeof(bfs->pre[0]) * 49)
-	bfs->pre[49] = malloc(sizeof(char *))
+	bfs->pre[49][0] =  '\0'
 	
-	do
-		bfs->post[ctl] = '\0'
-	while (++ctl < 25)
+	bfs->post[ctl] = '\0'
 
 void generate_giberish(rt_info *rti, buffs *bfs, set *s, uint len)
 	int ran
@@ -223,7 +199,6 @@ static char setch(char *c)
 static void input_loop(rt_info *rti, buffs *bfs, set *s, char *c)
 	while (setch(c) < 1)
 		if (s->gm == time_count && rti->start_time != 0 && (ulong) time(NULL) > (rti->start_time + rti->timer))
-			free_bufs(bfs)
 			quit(rti, true, NULL)
 
 static void init_info(rt_info *rti, int len, int hei)
@@ -239,7 +214,8 @@ int main(int argc, char **argv)
 		.stall = true
 		.stay = false
 	
-	buffs *bfs,bfs_o
+	buffs *bfs,bfs_o =
+		.post = ""
 	
 	bool hi=false, tt = false, ww = false, dd = false
 	uint mistakes = 0, current_word_position = 0, wcc_off
@@ -323,8 +299,6 @@ int main(int argc, char **argv)
 	srand((uint) time(NULL))
 	curses_init()
 	
-	alloc_buffers(bfs)
-	
 	ctl = 0
 	do
 		generate_giberish(rti, bfs, s, ctl)
@@ -355,7 +329,6 @@ int main(int argc, char **argv)
 		last = c
 		hi = false
 		if (s->gm == words_count && rti->current_word == rti->words)
-			free_bufs(bfs)
 			quit(rti, true, NULL)
 		input_loop(rti, bfs, s, &c)
 		if (rti->curcon == unstarted)
@@ -370,7 +343,6 @@ int main(int argc, char **argv)
 				c = ' '
 				break
 			case 27:	/* Escape */
-				free_bufs(bfs)
 				quit(rti, true, NULL)
 			case 127: /* Backspace */
 				if (rti->curcon != eow)
@@ -383,6 +355,7 @@ int main(int argc, char **argv)
 			default:
 				if (rti->curcon != eow && current_word_position < strlen(bfs->pre[0]))
 					bfs->post[current_word_position] = c
+					bfs->post[current_word_position + 1] = '\0'
 				else
 					hi = true
 		if (rti->curcon == backspace)

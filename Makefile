@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Os -std=c2x -Wall
+CFLAGS = -Os -std=c2x -Wall -g -fanalyzer
 LDFLAGS = -lcurses
 
 all:
