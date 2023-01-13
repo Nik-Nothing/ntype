@@ -1,3 +1,3 @@
-Typing Curses
+# Typing Curses
 
-(not so anymore) simple typing test using libcurses
+A monkeytype inspired curses typing test for the terminal, written in the C syntax for my transpiler(ib)
