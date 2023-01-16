@@ -309,10 +309,15 @@ static char setch(char *c)
 }
 
 
-static void input_loop(rt_info *rti, buffs *bfs, set *s, char *c)
+static void input_loop(rt_info *rti, buffs *bfs, set *s, char *c, char l)
 {
+	int ti = 0;
 	while (setch(c) < 1)
 	{
+		if (ti++ > 100)
+		{
+			update_keyboard(bfs, COLS, LINES, NULL, NULL, l);
+		}
 		if (s->gm == time_count && rti->start_time != 0 && (ulong) time(NULL) > (rti->start_time + s->timer))
 		{
 			quit(rti, true, NULL);
@@ -400,7 +405,7 @@ int loop(set *s)
 		{
 			quit(rti, true, NULL);
 		}
-		input_loop(rti, bfs, s, &c);
+		input_loop(rti, bfs, s, &c, last);
 		if (rti->curcon == unstarted)
 		{
 			rti->start_time = (ulong) time(NULL);
