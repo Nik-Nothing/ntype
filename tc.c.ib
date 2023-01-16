@@ -2,61 +2,56 @@
 #include <stdlib.h>
 #include <stdnoreturn.h>
 #include <unistd.h>
-
 #include <string.h>
 #include <time.h>
 #include <ctype.h>
-
 #include <curses.h>
+
 
 #define uint unsigned int
 #define ulong unsigned long
 
 #define elif else if
 
-enum contl
+
+typedef enum contl
 	unstarted
 	insert
 	backspace
 	eow
+control
 
-typedef enum contl control
-
-struct runtime_info
+typedef struct runtime_info
 	uint    current_word
 	uint    mistakes_total
 	ulong   start_time
 	WINDOW  *tpwin
 	WINDOW  *rtwin
 	control curcon
+rt_info
 
-typedef struct runtime_info rt_info
-
-struct buffers
+typedef struct buffers
 	char    pre[100][100]
 	char    post[100]
 	WINDOW  *kbwin[100]
 	uint    mistake_pos[100]
+buffs
 
-typedef struct buffers buffs
-
-enum gamemd
+typedef enum gamemd
 	gm_undefined
 	words_count
 	time_count
 	endless
+gamemode
 
-typedef enum gamemd gamemode
 
-
-struct settings
+typedef struct settings
 	gamemode  gm
 	ulong   timer
 	uint    words
 	bool      stall
 	bool      stay
-
-typedef struct settings set
+set
 
 char dic [1000][1000]
 size_t dic_s = 0
