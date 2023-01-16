@@ -63,10 +63,10 @@ typedef struct settings
 }
 set;
 
-char   dic   [1000][1000];
-size_t dic_s = 0;
-char   kmp   [30];
-size_t thm [5]   [3];
+char         dic   [1000][100];
+size_t       dic_s = 0;
+char         kmp   [30];
+unsigned int thm   [6]   [3];
 
 
 static void strip_newline(char *str)
@@ -77,7 +77,7 @@ static void strip_newline(char *str)
 	}
 }
 
-void load_dict(char **buf, const char *path)
+void load_dict(const char *path)
 {
 	FILE *fp = fopen(path, "r");
 	if (!fp) return;
@@ -85,7 +85,7 @@ void load_dict(char **buf, const char *path)
 	fclose(fp);
 }
 
-void load_kmp(char *kmp, const char *path)
+void load_kmp(const char *path)
 {
 	FILE *fp = fopen(path, "r");
 	if (!fp) return;
@@ -98,16 +98,17 @@ void load_thm(const char *path)
 	FILE *fp = fopen(path, "r");
 	if (!fp) return;
 	size_t x = 0;
-	while (x < 5)
+	while (x < 6)
 	{
 		char col[10];
-		fgets(col, 10, fp);
+		if (!fgets(col, 10, fp)) break;
 		sscanf(col, "#%2x%2x%2x", &thm[x][0], &thm[x][1], &thm[x][2] );
 		thm[x][0] *= ( 1000 / 256 );
 		thm[x][1] *= ( 1000 / 256 );
 		thm[x][2] *= ( 1000 / 256 );
 		++x;
 	}
+	fclose(fp);
 }
 
 void shift_buffers(buffs *bfs)
@@ -134,6 +135,7 @@ WINDOW *create_newwin(int h, int w, int sy, int sx)
 	
 	local_win = newwin(h, w, sy, sx);
 	box(local_win, 0, 0);
+	wbkgd(local_win, COLOR_PAIR(5));
 	wrefresh(local_win);
 	return local_win;
 }
@@ -175,8 +177,6 @@ void init_keyboard(buffs *bfs, int len, int hei)
 
 void update_keyboard(buffs *bfs, int len, int hei, bool hi, char in, char last)
 {
-	//const char c1[] = "qwertzuiopöasdfghjklyxcvbnm,.-";
-	const char c1[] = "',.pyfgcrlaoeuidhtns;qjkxbmwvz";
 	int		hr = 4, ofs = 0, idp = 0;
 	
 	uint ctl = 0;
@@ -213,16 +213,17 @@ static void curses_init()
 	timeout(1);
 	start_color();
 	
-	init_color(1, thm[0][0], thm[0][1], thm[0][2]) ;// unwritten text
-	init_color(2, thm[1][0], thm[1][1], thm[1][2]) ;// unwritten text
-	init_color(3, thm[2][0], thm[2][1], thm[2][2]) ;// unwritten text
-	init_color(4, thm[3][0], thm[3][1], thm[3][2]) ;// unwritten text
-	init_color(5, thm[4][0], thm[4][1], thm[4][2]) ;// unwritten text
-	init_pair(1, COLOR_BLACK, 3);
-	init_pair(2, COLOR_BLACK, 4);
-	init_pair(3, 1, COLOR_BLACK);
-	init_pair(4, COLOR_BLACK, COLOR_BLACK);
-	init_pair(5, 5, COLOR_BLACK);
+	init_color(1, thm[0][0], thm[0][1], thm[0][2]);
+	init_color(2, thm[1][0], thm[1][1], thm[1][2]);
+	init_color(3, thm[2][0], thm[2][1], thm[2][2]);
+	init_color(4, thm[3][0], thm[3][1], thm[3][2]);
+	init_color(5, thm[4][0], thm[4][1], thm[4][2]);
+	init_color(6, thm[5][0], thm[5][1], thm[5][2]);
+	init_pair(1, 6, 3);
+	init_pair(2, 6, 4);
+	init_pair(3, 1, 6);
+	init_pair(4, 6, 6);
+	init_pair(5, 5, 6);
 }
 
 static void noreturn quit(rt_info *rti, bool print, char *custom_log)
@@ -355,7 +356,7 @@ int loop(set *s)
 	
 	srand((uint) time(NULL));
 	curses_init();
-	
+	wbkgd(stdscr, COLOR_PAIR(5));
 	ctl = 0;
 	do
 	{
@@ -365,9 +366,8 @@ int loop(set *s)
 	
 	init_keyboard(bfs, COLS, LINES);
 	
-	wattron(rti->tpwin, COLOR_PAIR(5));
 	rti->tpwin = create_newwin(LINES - (LINES / 17) * 4, COLS, 0, 0);
-	wattron(rti->tpwin, COLOR_PAIR(5));
+	wbkgd(rti->tpwin, COLOR_PAIR(5));
 	
 	while (1)
 	{
@@ -470,7 +470,6 @@ int loop(set *s)
 						mistakes = 0;
 						if (!s->stay)
 						{
-							uint wff_off_b = wff_off;
 							wff_off += strlen(bfs->pre[0])+1;
 							if(1 <= ((wff_off + strlen(bfs->pre[1]))) / ((uint) COLS - 6))
 							{
@@ -519,7 +518,7 @@ int loop(set *s)
 
 int main(int argc, char **argv)
 {
-	bool tt = false, ww = false, dd = false;
+	bool tt = false, ww = false, dd = false, th = false, ths = false;
 	set s_o =
 	{
 		.gm = gm_undefined,
@@ -570,6 +569,10 @@ int main(int argc, char **argv)
 		{
 			s_o.stay = true;
 		}
+		elif (strcmp(*argv, "--theme") == 0 || strcmp(*argv, "-H") == 0)
+		{
+			th = true;
+		}
 		elif (strcmp(*argv, "--dont-stall") == 0 || strcmp(*argv, "-D") == 0)
 		{
 			s_o.stall = false;
@@ -604,16 +607,21 @@ int main(int argc, char **argv)
 		{
 			if (strcmp(*argv, "en") == 0)
 			{
-				load_dict(dic, "en.dic");
+				load_dict("en.dic");
 			}
 			elif (strcmp(*argv, "unix") == 0)
 			{
-				load_dict(dic, "unix.dic");
+				load_dict("unix.dic");
 			}
 			else
 			{
 				quit(NULL, true, "dictionary not found\n");
 			}
+		}
+		elif (th)
+		{
+			load_thm(*argv);
+			ths = true;
 		}
 		else
 		{
@@ -632,9 +640,12 @@ int main(int argc, char **argv)
 	{
 		s_o.gm = words_count;
 	}
-	load_dict(dic, "dicts/en.dic");
-	load_kmp(kmp, "keymaps/dvorak.kmp");
-	load_thm("themes/default.theme");
+	load_dict("dicts/en.dic");
+	load_kmp("keymaps/dvorak.kmp");
+	if (!ths)
+	{
+		load_thm("themes/default.theme");
+	}
 	
 	return loop(&s_o);
 }
