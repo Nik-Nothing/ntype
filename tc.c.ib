@@ -9,8 +9,6 @@
 
 #include <curses.h>
 
-#include "dict.h"
-
 #define uint unsigned int
 #define ulong unsigned long
 
@@ -55,11 +53,24 @@ struct settings
 	gamemode  gm
 	ulong   timer
 	uint    words
-	enum dict dic
 	bool      stall
 	bool      stay
 
 typedef struct settings set
+
+char dic [1000][1000]
+size_t dic_s = 0
+
+
+static void strip_newline(char *str)
+	if (str[strlen(str) - 1] == '\n')
+		str[strlen(str) - 1] = '\0'
+
+void load_dict(char **buf, const char *path)
+	FILE *fp = fopen(path, "r")
+	if (!fp) return
+	while(fgets(dic[dic_s], 100, fp)) strip_newline(dic[dic_s++])
+	fclose(fp)
 
 void shift_buffers(buffs *bfs)
 	uint ctl = 0
@@ -72,12 +83,8 @@ void shift_buffers(buffs *bfs)
 void generate_giberish(rt_info *rti, buffs *bfs, set *s, uint len)
 	int ran
 	
-	if (s->dic == en)
-		ran = (rand() % 1000)
-		strcpy(bfs->pre[len], en_dict[ran])
-	elif (s->dic == unix)
-		ran = (rand() % 107)
-		strcpy(bfs->pre[len], unix_dict[ran])
+	ran = (rand() % dic_s)
+	strcpy(bfs->pre[len], dic[ran])
 
 WINDOW *create_newwin(int h, int w, int sy, int sx)
 	WINDOW *local_win
@@ -100,18 +107,19 @@ void init_keyboard(buffs *bfs, int len, int hei)
 	
 	uint ctl = 0
 	do
-		bfs->kbwin[ctl] = create_newwin(hei / 14, hei / 8, hei - (hei / 14) * hr,((hei / 8) * idp) + ((hei / 20) * ofs) + ((len / 2) - (hei / 8) * 5))
+		bfs->kbwin[ctl] = create_newwin(hei / 17, hei / 9, hei - (hei / 17) * hr,((hei / 9) * idp) + ((hei / 17) * ofs) + ((len / 2) - (hei / 10) * 6))
 		++idp
-		if (ctl == 9 || ctl == 18)
+		if (ctl == 9 || ctl == 19)
 			--hr
 			++ofs
 			idp = 0
-	while (++ctl != 27)
+	while (++ctl != 29)
 	
-	bfs->kbwin[ctl] = create_newwin(hei / 14, (hei / 8) * 5, hei - (hei / 14), (len / 2) - ((hei / 14) * 4))
+	bfs->kbwin[ctl] = create_newwin(hei / 17, (hei / 9) * 5, hei - (hei / 17), (len / 2) - ((hei / 17) * 4))
 
 void update_keyboard(buffs *bfs, int len, int hei, bool hi, char in, char last)
-	const char	c1[27] = {'q', 'w', 'e', 'r', 't', 'z', 'u', 'i', 'o', 'p', 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'y', 'x', 'c', 'v', 'b', 'n', 'm', ','}
+	//const char c1[] = "qwertzuiopöasdfghjklyxcvbnm,.-"
+	const char c1[] = "',.pyfgcrlaoeuidhtns;qjkxbmwvz"
 	int		hr = 4, ofs = 0, idp = 0
 	
 	uint ctl = 0
@@ -136,7 +144,7 @@ static void curses_init()
 	timeout(1)
 	start_color()
 	
-	init_color(COLOR_CYAN, 350, 350, 350)
+	init_color(COLOR_CYAN, 450, 450, 450)
 	init_pair(1, COLOR_BLACK, COLOR_GREEN)
 	init_pair(2, COLOR_BLACK, COLOR_RED)
 	init_pair(3, COLOR_CYAN, COLOR_BLACK)
@@ -236,7 +244,7 @@ int loop(set *s)
 	
 	init_keyboard(bfs, COLS, LINES)
 	
-	rti->tpwin = create_newwin(LINES - (LINES / 14) * 4, COLS, 0, 0)
+	rti->tpwin = create_newwin(LINES - (LINES / 17) * 4, COLS, 0, 0)
 	
 	while (1)
 		refresh()
@@ -327,7 +335,6 @@ int main(int argc, char **argv)
 	bool tt = false, ww = false, dd = false
 	set s_o =
 		.gm = gm_undefined
-		.dic = d_undefined
 		.stall = true
 		.stay = false
 	
@@ -377,9 +384,9 @@ int main(int argc, char **argv)
 			ww = false
 		elif (dd)
 			if (strcmp(*argv, "en") == 0)
-				s_o.dic = en
+				load_dict(dic, "en.dic")
 			elif (strcmp(*argv, "unix") == 0)
-				s_o.dic = unix
+				load_dict(dic, "unix.dic")
 			else
 				quit(NULL, true, "dictionary not found\n")
 		else
@@ -390,7 +397,6 @@ int main(int argc, char **argv)
 		s_o.words = 40
 	if (s_o.gm == gm_undefined)
 		s_o.gm = words_count
-	if (s_o.dic == d_undefined)
-		s_o.dic = en
+	load_dict(dic, "en.dic")
 	
 	return loop(&s_o)
