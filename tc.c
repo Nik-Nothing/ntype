@@ -64,6 +64,7 @@ typedef struct settings
 set;
 
 char dic [1000][1000];
+char kmp [30];
 size_t dic_s = 0;
 
 
@@ -80,6 +81,14 @@ void load_dict(char **buf, const char *path)
 	FILE *fp = fopen(path, "r");
 	if (!fp) return;
 	while(fgets(dic[dic_s], 100, fp)) strip_newline(dic[dic_s++]);
+	fclose(fp);
+}
+
+void load_kmp(char *kmp, const char *path)
+{
+	FILE *fp = fopen(path, "r");
+	if (!fp) return;
+	fgets(kmp, 30, fp);
 	fclose(fp);
 }
 
@@ -155,10 +164,10 @@ void update_keyboard(buffs *bfs, int len, int hei, bool hi, char in, char last)
 	uint ctl = 0;
 	do
 	{
-		if (c1[ctl] == in || c1[ctl] == last)
+		if (kmp[ctl] == in || kmp[ctl] == last)
 		{
 			{
-				update_win(bfs->kbwin[ctl], (c1[ctl] == in), hi);
+				update_win(bfs->kbwin[ctl], (kmp[ctl] == in), hi);
 			}
 		}
 		++idp;
@@ -599,7 +608,8 @@ int main(int argc, char **argv)
 	{
 		s_o.gm = words_count;
 	}
-	load_dict(dic, "en.dic");
+	load_dict(dic, "dicts/en.dic");
+	load_kmp(kmp, "keymaps/dvorak.kmp");
 	
 	return loop(&s_o);
 }
