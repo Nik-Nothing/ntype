@@ -53,9 +53,10 @@ typedef struct settings
 	bool      stay
 set
 
-char dic [1000][1000]
-char kmp [30]
+char   dic   [1000][1000]
 size_t dic_s = 0
+char   kmp   [30]
+size_t thm [5]   [3]
 
 
 static void strip_newline(char *str)
@@ -73,6 +74,19 @@ void load_kmp(char *kmp, const char *path)
 	if (!fp) return
 	fgets(kmp, 30, fp)
 	fclose(fp)
+
+void load_thm(const char *path)
+	FILE *fp = fopen(path, "r")
+	if (!fp) return
+	size_t x = 0
+	while (x < 5)
+		char col[10]
+		fgets(col, 10, fp)
+		sscanf(col, "#%2x%2x%2x", &thm[x][0], &thm[x][1], &thm[x][2] )
+		thm[x][0] *= ( 1000 / 256 )
+		thm[x][1] *= ( 1000 / 256 )
+		thm[x][2] *= ( 1000 / 256 )
+		++x
 
 void shift_buffers(buffs *bfs)
 	uint ctl = 0
@@ -146,12 +160,16 @@ static void curses_init()
 	timeout(1)
 	start_color()
 	
-	init_color(COLOR_CYAN, 450, 450, 450)
-	init_pair(1, COLOR_BLACK, COLOR_GREEN)
-	init_pair(2, COLOR_BLACK, COLOR_RED)
-	init_pair(3, COLOR_CYAN, COLOR_BLACK)
+	init_color(1, thm[0][0], thm[0][1], thm[0][2]) // unwritten text
+	init_color(2, thm[1][0], thm[1][1], thm[1][2]) // unwritten text
+	init_color(3, thm[2][0], thm[2][1], thm[2][2]) // unwritten text
+	init_color(4, thm[3][0], thm[3][1], thm[3][2]) // unwritten text
+	init_color(5, thm[4][0], thm[4][1], thm[4][2]) // unwritten text
+	init_pair(1, COLOR_BLACK, 3)
+	init_pair(2, COLOR_BLACK, 4)
+	init_pair(3, 1, COLOR_BLACK)
 	init_pair(4, COLOR_BLACK, COLOR_BLACK)
-	init_pair(5, COLOR_WHITE, COLOR_BLACK)
+	init_pair(5, 5, COLOR_BLACK)
 
 static void noreturn quit(rt_info *rti, bool print, char *custom_log)
 	ulong time_elps
@@ -246,7 +264,9 @@ int loop(set *s)
 	
 	init_keyboard(bfs, COLS, LINES)
 	
+	wattron(rti->tpwin, COLOR_PAIR(5))
 	rti->tpwin = create_newwin(LINES - (LINES / 17) * 4, COLS, 0, 0)
+	wattron(rti->tpwin, COLOR_PAIR(5))
 	
 	while (1)
 		refresh()
@@ -401,5 +421,6 @@ int main(int argc, char **argv)
 		s_o.gm = words_count
 	load_dict(dic, "dicts/en.dic")
 	load_kmp(kmp, "keymaps/dvorak.kmp")
+	load_thm("themes/default.theme")
 	
 	return loop(&s_o)
