@@ -6,6 +6,8 @@
 #include <time.h>
 #include <ctype.h>
 #include <curses.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 
 
 #define uint unsigned int
@@ -77,22 +79,17 @@ static void strip_newline(char *str)
 	}
 }
 
-void rectangle(int y1, int x1, int y2, int x2)
+static void rectangle(int y1, int x1, int y2, int x2)
 {
 	mvhline(y1, x1, 0, x2-x1);
 	mvhline(y2, x1, 0, x2-x1);
 	mvvline(y1, x1, 0, y2-y1);
 	mvvline(y1, x2, 0, y2-y1);
-	//mvaddch(y1, x1, '+')
-	//mvaddch(y2, x1, '+')
-	//mvaddch(y1, x2, '+')
-	//mvaddch(y2, x2, '+')
 	mvaddch(y1, x1, ACS_ULCORNER);
 	mvaddch(y2, x1, ACS_LLCORNER);
 	mvaddch(y1, x2, ACS_URCORNER);
 	mvaddch(y2, x2, ACS_LRCORNER);
 }
-
 
 void load_dict(const char *path)
 {
@@ -220,7 +217,6 @@ void update_keyboard(buffs *bfs, int len, int hei, bool hi, char in, char last)
 static void curses_init()
 {
 	initscr();
-	//curs_set(0)
 	printf("\033[6 q");
 	cbreak();
 	noecho();
@@ -248,7 +244,7 @@ static void noreturn quit(rt_info *rti, bool print, char *custom_log)
 	endwin();
 	if (print)
 	{
-		if (custom_log == NULL)
+		if (!custom_log)
 		{
 			time_elps = (unsigned long) time(NULL) - rti->start_time;
 			printf("%d Words in %lu Seconds! that is %.2f WPM, you made %d Mistakes\n", rti->current_word, time_elps, (double) 60 * ( (double) (rti->cp / 5) / (double) time_elps), rti->mistakes_total);
@@ -259,21 +255,6 @@ static void noreturn quit(rt_info *rti, bool print, char *custom_log)
 		}
 	}
 	exit(0);
-}
-
-static int check_word(buffs *bfs)
-{
-	uint ctl = 0;
-	
-	do
-	{
-		if (bfs->pre[0][ctl] != bfs->post[ctl])
-		{
-			return 1;
-		}
-	}
-	while (++ctl < strlen(bfs->pre[0]));
-	return 0;
 }
 
 static void print_pre(set *s, rt_info *rti, buffs *bfs, uint max, uint wln, uint wff_off)
@@ -327,7 +308,7 @@ static void input_loop(rt_info *rti, buffs *bfs, set *s, char *c, char l, size_t
 	{
 		if (ti++ > 100)
 		{
-			update_keyboard(bfs, COLS, LINES, NULL, NULL, l);
+			update_keyboard(bfs, COLS, LINES, 0, 0, l);
 			if (rti->curcon == eow)
 			{
 				move(2, wcc_off + 2 + strlen(bfs->post));
@@ -495,7 +476,7 @@ int loop(set *s)
 			if (current_word_position == strlen(bfs->pre[0]) - 1)
 			{
 				{
-					if (check_word(bfs) == 0 || !s->stall)
+					if (!strcmp(bfs->pre[0], bfs->post) || !s->stall)
 					{
 						current_word_position = 0;
 						++rti->current_word;
@@ -516,7 +497,7 @@ int loop(set *s)
 							generate_giberish(rti, bfs, s, s->words-1);
 						}
 					}
-					elif (check_word(bfs) == 1)
+					else
 					{
 						hi = true;
 					}
