@@ -25,6 +25,7 @@ control;
 
 typedef struct runtime_info
 {
+	uint    cp;
 	uint    current_word;
 	uint    mistakes_total;
 	ulong   start_time;
@@ -38,7 +39,6 @@ typedef struct buffers
 {
 	char    pre[100][100];
 	char    post[100];
-	WINDOW  *kbwin[100];
 	uint    mistake_pos[100];
 }
 buffs;
@@ -65,7 +65,7 @@ set;
 
 char         dic   [1000][100];
 size_t       dic_s = 0;
-char         kmp   [30];
+char         kmp   [31];
 unsigned int thm   [6]   [3];
 
 
@@ -76,6 +76,23 @@ static void strip_newline(char *str)
 		str[strlen(str) - 1] = '\0';
 	}
 }
+
+void rectangle(int y1, int x1, int y2, int x2)
+{
+	mvhline(y1, x1, 0, x2-x1);
+	mvhline(y2, x1, 0, x2-x1);
+	mvvline(y1, x1, 0, y2-y1);
+	mvvline(y1, x2, 0, y2-y1);
+	//mvaddch(y1, x1, '+')
+	//mvaddch(y2, x1, '+')
+	//mvaddch(y1, x2, '+')
+	//mvaddch(y2, x2, '+')
+	mvaddch(y1, x1, ACS_ULCORNER);
+	mvaddch(y2, x1, ACS_LLCORNER);
+	mvaddch(y1, x2, ACS_URCORNER);
+	mvaddch(y2, x2, ACS_LRCORNER);
+}
+
 
 void load_dict(const char *path)
 {
@@ -136,22 +153,19 @@ WINDOW *create_newwin(int h, int w, int sy, int sx)
 	local_win = newwin(h, w, sy, sx);
 	box(local_win, 0, 0);
 	wbkgd(local_win, COLOR_PAIR(5));
-	wrefresh(local_win);
 	return local_win;
 }
 
-void update_win(WINDOW* local_win, bool pressed, bool hi)
+void srect(int h, int w, int sy, int sx)
 {
-	box(local_win, 0, 0);
-	if (pressed)
-	{
-		wbkgd(local_win, COLOR_PAIR(hi ? 2 : 1));
-	}
-	else
-	{
-		wbkgd(local_win, COLOR_PAIR(5));
-	}
-	wrefresh(local_win);
+	rectangle(sy, sx, sy + h, sx + w);
+}
+
+void update_win(int h, int w, int sy, int sx, bool pressed, bool hi)
+{
+	attron(COLOR_PAIR(!pressed ? 5 : hi ? 2 : 1));
+	srect(h, w, sy, sx);
+	attroff(COLOR_PAIR(!pressed ? 5 : hi ? 2 : 1));
 }
 
 void init_keyboard(buffs *bfs, int len, int hei)
@@ -161,7 +175,7 @@ void init_keyboard(buffs *bfs, int len, int hei)
 	uint ctl = 0;
 	do
 	{
-		bfs->kbwin[ctl] = create_newwin(hei / 17, hei / 9, hei - (hei / 17) * hr,((hei / 9) * idp) + ((hei / 17) * ofs) + ((len / 2) - (hei / 10) * 6));
+		srect(hei / 17, hei / 9, hei - (hei / 15) * hr,((hei / 8) * idp) + ((hei / 15) * ofs) + ((len / 2) - (hei / 15) * 10));
 		++idp;
 		if (ctl == 9 || ctl == 19)
 		{
@@ -172,8 +186,9 @@ void init_keyboard(buffs *bfs, int len, int hei)
 	}
 	while (++ctl != 29);
 	
-	bfs->kbwin[ctl] = create_newwin(hei / 17, (hei / 9) * 5, hei - (hei / 17), (len / 2) - ((hei / 17) * 4));
+	srect(hei / 17, (hei / 9) * 5, hei - (hei / 15), (len / 2) - ((hei / 15) * 4));
 }
+
 
 void update_keyboard(buffs *bfs, int len, int hei, bool hi, char in, char last)
 {
@@ -184,30 +199,29 @@ void update_keyboard(buffs *bfs, int len, int hei, bool hi, char in, char last)
 	{
 		if (kmp[ctl] == in || kmp[ctl] == last)
 		{
-			{
-				update_win(bfs->kbwin[ctl], (kmp[ctl] == in), hi);
-			}
+			update_win(hei / 17, hei / 9, hei - (hei / 15) * hr,((hei / 8) * idp) + ((hei / 15) * ofs) + ((len / 2) - (hei / 15) * 10),(kmp[ctl] == in), hi);
 		}
 		++idp;
-		if (ctl == 9 || ctl == 18)
+		if (ctl == 9 || ctl == 19)
 		{
 			--hr;
 			++ofs;
 			idp = 0;
 		}
 	}
-	while (++ctl != 27);
+	while (++ctl != 29);
 	
 	if (' ' == in || last == ' ')
 	{
-		update_win(bfs->kbwin[ctl], in == ' ' ? 1 : 0, hi);
+		update_win(hei / 17, (hei / 9) * 5, hei - (hei / 15), (len / 2) - ((hei / 15) * 4),(' ' == in), hi);
 	}
 }
 
 static void curses_init()
 {
 	initscr();
-	curs_set(0);
+	//curs_set(0)
+	printf("\033[6 q");
 	cbreak();
 	noecho();
 	timeout(1);
@@ -230,13 +244,14 @@ static void noreturn quit(rt_info *rti, bool print, char *custom_log)
 {
 	ulong time_elps;
 	
+	printf("\033[1 q");
 	endwin();
 	if (print)
 	{
 		if (custom_log == NULL)
 		{
 			time_elps = (unsigned long) time(NULL) - rti->start_time;
-			printf("%d Words in %lu Seconds! that is %.2f WPM, you made %d Mistakes\n", rti->current_word, time_elps, (double) 60 * ( (double) rti->current_word / (double) time_elps), rti->mistakes_total);
+			printf("%d Words in %lu Seconds! that is %.2f WPM, you made %d Mistakes\n", rti->current_word, time_elps, (double) 60 * ( (double) (rti->cp / 5) / (double) time_elps), rti->mistakes_total);
 		}
 		else
 		{
@@ -287,19 +302,16 @@ static void print_pre(set *s, rt_info *rti, buffs *bfs, uint max, uint wln, uint
 
 static void print_post(rt_info *rti, buffs *bfs, uint wff_off, uint mistakes)
 {
-	uint ctl, wcc_off = wff_off;
+	uint ctl = 0, wcc_off = wff_off;
 	mvwaddstr(rti->tpwin, 2, wcc_off + 3, bfs->post);
-	if (mistakes > 0)
+	while (ctl < mistakes)
 	{
-		ctl = 0;
-		do
-		{
-			wattron(rti->tpwin, COLOR_PAIR(2));
-			mvwaddch(rti->tpwin, 2, 3 + wcc_off + bfs->mistake_pos[ctl], bfs->pre[0][bfs->mistake_pos[ctl]]);
-			wattroff(rti->tpwin, COLOR_PAIR(2));
-		}
-		while (++ctl < mistakes);
+		wattron(rti->tpwin, COLOR_PAIR(2));
+		mvwaddch(rti->tpwin, 2, 3 + wcc_off + bfs->mistake_pos[ctl], bfs->pre[0][bfs->mistake_pos[ctl]]);
+		wattroff(rti->tpwin, COLOR_PAIR(2));
+		ctl++;
 	}
+	wmove(rti->tpwin, 2, wcc_off + 3 + strlen(bfs->post));
 }
 
 static char setch(char *c)
@@ -308,8 +320,7 @@ static char setch(char *c)
 	return *c;
 }
 
-
-static void input_loop(rt_info *rti, buffs *bfs, set *s, char *c, char l)
+static void input_loop(rt_info *rti, buffs *bfs, set *s, char *c, char l, size_t wcc_off)
 {
 	int ti = 0;
 	while (setch(c) < 1)
@@ -317,6 +328,15 @@ static void input_loop(rt_info *rti, buffs *bfs, set *s, char *c, char l)
 		if (ti++ > 100)
 		{
 			update_keyboard(bfs, COLS, LINES, NULL, NULL, l);
+			if (rti->curcon == eow)
+			{
+				move(2, wcc_off + 2 + strlen(bfs->post));
+			}
+			else
+			{
+				move(2, wcc_off + 3 + strlen(bfs->post));
+			}
+			wrefresh(rti->tpwin);
 		}
 		if (s->gm == time_count && rti->start_time != 0 && (ulong) time(NULL) > (rti->start_time + s->timer))
 		{
@@ -352,7 +372,8 @@ int loop(set *s)
 		.current_word = 0,
 		.mistakes_total = 0,
 		.start_time = 0,
-		.curcon = unstarted
+		.curcon = unstarted,
+		.cp = 0
 	};
 	
 	bfs = &bfs_o;
@@ -371,7 +392,7 @@ int loop(set *s)
 	
 	init_keyboard(bfs, COLS, LINES);
 	
-	rti->tpwin = create_newwin(LINES - (LINES / 17) * 4, COLS, 0, 0);
+	rti->tpwin = create_newwin(LINES - (LINES / 14) * 4, COLS, 0, 0);
 	wbkgd(rti->tpwin, COLOR_PAIR(5));
 	
 	while (1)
@@ -388,24 +409,32 @@ int loop(set *s)
 		{
 			wcc_off = 0;
 		}
-		print_pre(s, rti, bfs, (uint) COLS - 6, 0, wcc_off);
-		print_post(rti, bfs, wcc_off, mistakes);
-		
-		wcc_off += (strlen(bfs->pre[0]) + 1);
-		wrefresh(rti->tpwin);
-		refresh();
 		if (rti->curcon == unstarted)
 		{
 			init_keyboard(bfs, COLS, LINES);
 		}
 		update_keyboard(bfs, COLS, LINES, hi, c, last);
+		print_pre(s, rti, bfs, (uint) COLS - 6, 0, wcc_off);
+		print_post(rti, bfs, wcc_off, mistakes);
+		if (rti->curcon == eow)
+		{
+			move(2, wcc_off + 2 + strlen(bfs->post));
+		}
+		else
+		{
+			move(2, wcc_off + 3 + strlen(bfs->post));
+		}
+		wrefresh(rti->tpwin);
+		refresh();
+		
 		last = c;
 		hi = false;
 		if (s->gm == words_count && rti->current_word == s->words)
 		{
 			quit(rti, true, NULL);
 		}
-		input_loop(rti, bfs, s, &c, last);
+		input_loop(rti, bfs, s, &c, last, wcc_off);
+		wcc_off += (strlen(bfs->pre[0]) + 1);
 		if (rti->curcon == unstarted)
 		{
 			rti->start_time = (ulong) time(NULL);
@@ -423,8 +452,7 @@ int loop(set *s)
 			};
 			case 11:	/* Tabulator */
 			{
-				c = ' ';
-				break;
+				return;
 			};
 			case 27:	/* Escape */
 			{
@@ -476,6 +504,7 @@ int loop(set *s)
 						if (!s->stay)
 						{
 							wff_off += strlen(bfs->pre[0])+1;
+							rti->cp += strlen(bfs->pre[0])+1;
 							if(1 <= ((wff_off + strlen(bfs->pre[1]))) / ((uint) COLS - 6))
 							{
 								wff_off = 0;
@@ -651,6 +680,5 @@ int main(int argc, char **argv)
 	{
 		load_thm("themes/default.theme");
 	}
-	
-	return loop(&s_o);
+	loop(&s_o);
 }
