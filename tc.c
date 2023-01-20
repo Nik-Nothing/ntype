@@ -295,7 +295,7 @@ static void print_post(rt_info *rti, buffs *bfs, uint wff_off, uint mistakes)
 	wmove(rti->tpwin, 2, wcc_off + 3 + strlen(bfs->post));
 }
 
-static char setch(char *c)
+static signed char setch(char *c)
 {
 	*c = (char) getch();
 	return *c;
