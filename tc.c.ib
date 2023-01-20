@@ -299,7 +299,7 @@ int loop(set *s)
 				c = ' '
 				break
 			case 11:	/* Tabulator */
-				return
+				return 0
 			case 27:	/* Escape */
 				quit(rti, true, NULL)
 			case 127: /* Backspace */

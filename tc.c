@@ -393,7 +393,7 @@ int loop(set *s)
 			};
 			case 11:	/* Tabulator */
 			{
-				return;
+				return 0;
 			};
 			case 27:	/* Escape */
 			{
