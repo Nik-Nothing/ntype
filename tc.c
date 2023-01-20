@@ -223,17 +223,17 @@ static void curses_init()
 	timeout(1);
 	start_color();
 	
-	init_color(1, thm[0][0], thm[0][1], thm[0][2]);
-	init_color(2, thm[1][0], thm[1][1], thm[1][2]);
-	init_color(3, thm[2][0], thm[2][1], thm[2][2]);
-	init_color(4, thm[3][0], thm[3][1], thm[3][2]);
-	init_color(5, thm[4][0], thm[4][1], thm[4][2]);
-	init_color(6, thm[5][0], thm[5][1], thm[5][2]);
-	init_pair(1, 6, 3);
-	init_pair(2, 6, 4);
-	init_pair(3, 1, 6);
-	init_pair(4, 6, 6);
-	init_pair(5, 5, 6);
+	init_color(17, thm[0][0], thm[0][1], thm[0][2]);
+	init_color(18, thm[1][0], thm[1][1], thm[1][2]);
+	init_color(19, thm[2][0], thm[2][1], thm[2][2]);
+	init_color(20, thm[3][0], thm[3][1], thm[3][2]);
+	init_color(21, thm[4][0], thm[4][1], thm[4][2]);
+	init_color(22, thm[5][0], thm[5][1], thm[5][2]);
+	init_pair(1, 22, 19);
+	init_pair(2, 22, 20);
+	init_pair(3, 17, 22);
+	init_pair(4, 22, 22);
+	init_pair(5, 21, 22);
 }
 
 static void noreturn quit(rt_info *rti, bool print, char *custom_log)
