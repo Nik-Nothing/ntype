@@ -9,12 +9,10 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
-
 #define uint unsigned int
 #define ulong unsigned long
 
 #define elif else if
-
 
 typedef enum contl
 {
@@ -54,7 +52,6 @@ typedef enum gamemd
 }
 gamemode;
 
-
 typedef struct settings
 {
 	gamemode  gm;
@@ -73,10 +70,7 @@ unsigned int thm   [6]   [3];
 
 static void strip_newline(char *str)
 {
-	if (str[strlen(str) - 1] == '\n')
-	{
-		str[strlen(str) - 1] = '\0';
-	}
+	if (str[strlen(str) - 1] == '\n') str[strlen(str) - 1] = '\0';
 }
 
 static void rectangle(int y1, int x1, int y2, int x2)
@@ -271,10 +265,7 @@ static void print_pre(set *s, rt_info *rti, buffs *bfs, uint max, uint wln, uint
 			yw = y-wln;
 			wcc_off = 0;
 		}
-		if (y >= wln)
-		{
-			mvwaddstr(rti->tpwin,yw + 2, wcc_off + 3,bfs->pre[ctl]);
-		}
+		if (y >= wln) mvwaddstr(rti->tpwin,yw + 2, wcc_off + 3,bfs->pre[ctl]);
 		wcc_off += (strlen(bfs->pre[ctl]) + 1);
 	}
 	while (++ctl < s->words);
@@ -309,14 +300,8 @@ static void input_loop(rt_info *rti, buffs *bfs, set *s, char *c, char l, size_t
 		if (ti++ > 100)
 		{
 			update_keyboard(bfs, COLS, LINES, 0, 0, l);
-			if (rti->curcon == eow)
-			{
-				move(2, wcc_off + 2 + strlen(bfs->post));
-			}
-			else
-			{
-				move(2, wcc_off + 3 + strlen(bfs->post));
-			}
+			if (rti->curcon == eow) move(2, wcc_off + 2 + strlen(bfs->post));
+			else                    move(2, wcc_off + 3 + strlen(bfs->post));
 			wrefresh(rti->tpwin);
 		}
 		if (s->gm == time_count && rti->start_time != 0 && (ulong) time(NULL) > (rti->start_time + s->timer))
@@ -360,7 +345,6 @@ int loop(set *s)
 	bfs = &bfs_o;
 	rti = &rti_o;
 	
-	
 	srand((uint) time(NULL));
 	curses_init();
 	wbkgd(stdscr, COLOR_PAIR(5));
@@ -382,48 +366,24 @@ int loop(set *s)
 		
 		werase(rti->tpwin);
 		box(rti->tpwin, 0, 0);
-		if(!s->stay)	
-		{
-			wcc_off = wff_off;
-		}
-		else
-		{
-			wcc_off = 0;
-		}
-		if (rti->curcon == unstarted)
-		{
-			init_keyboard(bfs, COLS, LINES);
-		}
+		if(!s->stay) wcc_off = wff_off;
+		else         wcc_off = 0;
+		if (rti->curcon == unstarted) init_keyboard(bfs, COLS, LINES);
 		update_keyboard(bfs, COLS, LINES, hi, c, last);
 		print_pre(s, rti, bfs, (uint) COLS - 6, 0, wcc_off);
 		print_post(rti, bfs, wcc_off, mistakes);
-		if (rti->curcon == eow)
-		{
-			move(2, wcc_off + 2 + strlen(bfs->post));
-		}
-		else
-		{
-			move(2, wcc_off + 3 + strlen(bfs->post));
-		}
+		if (rti->curcon == eow) move(2, wcc_off + 2 + strlen(bfs->post));
+		else                    move(2, wcc_off + 3 + strlen(bfs->post));
 		wrefresh(rti->tpwin);
 		refresh();
 		
 		last = c;
 		hi = false;
-		if (s->gm == words_count && rti->current_word == s->words)
-		{
-			quit(rti, true, NULL);
-		}
+		if (s->gm == words_count && rti->current_word == s->words) quit(rti, true, NULL);
 		input_loop(rti, bfs, s, &c, last, wcc_off);
 		wcc_off += (strlen(bfs->pre[0]) + 1);
-		if (rti->curcon == unstarted)
-		{
-			rti->start_time = (ulong) time(NULL);
-		}
-		if (rti->curcon != eow)
-		{
-			rti->curcon = insert;
-		}
+		if (rti->curcon == unstarted) rti->start_time = (ulong) time(NULL);
+		if (rti->curcon != eow)       rti->curcon = insert;
 		switch (c)
 		{
 			case 10:	/* Linebreak */
@@ -443,10 +403,7 @@ int loop(set *s)
 			{
 				if (rti->curcon != eow)
 				{
-					if (current_word_position > 0)
-					{
-						--current_word_position;
-					}
+					if (current_word_position > 0) --current_word_position;
 					bfs->post[current_word_position] = '\0';
 					c = '\0';
 					rti->curcon = backspace;
@@ -459,49 +416,32 @@ int loop(set *s)
 					bfs->post[current_word_position] = c;
 					bfs->post[current_word_position + 1] = '\0';
 				}
-				else
-				{
-					hi = true;
-				}
+				else hi = true;
 		}
 		if (rti->curcon == backspace)
 		{
-			if (mistakes > 0 && bfs->mistake_pos[mistakes-1] == current_word_position)
-			{
-				--mistakes;
-			}
+			if (mistakes > 0 && bfs->mistake_pos[mistakes-1] == current_word_position) --mistakes;
 		}
 		elif (rti->curcon == insert)
 		{
 			if (current_word_position == strlen(bfs->pre[0]) - 1)
 			{
+				if (!strcmp(bfs->pre[0], bfs->post) || !s->stall)
 				{
-					if (!strcmp(bfs->pre[0], bfs->post) || !s->stall)
+					current_word_position = 0;
+					++rti->current_word;
+					rti->curcon = eow;
+					mistakes = 0;
+					if (!s->stay)
 					{
-						current_word_position = 0;
-						++rti->current_word;
-						rti->curcon = eow;
-						mistakes = 0;
-						if (!s->stay)
-						{
-							wff_off += strlen(bfs->pre[0])+1;
-							rti->cp += strlen(bfs->pre[0])+1;
-							if(1 <= ((wff_off + strlen(bfs->pre[1]))) / ((uint) COLS - 6))
-							{
-								wff_off = 0;
-							}
-						}
-						shift_buffers(bfs);
-						if (s->gm == time_count || s->gm == endless)
-						{
-							generate_giberish(rti, bfs, s, s->words-1);
-						}
+						wff_off += strlen(bfs->pre[0])+1;
+						rti->cp += strlen(bfs->pre[0])+1;
+						if(1 <= ((wff_off + strlen(bfs->pre[1]))) / ((uint) COLS - 6)) wff_off = 0;
 					}
-					else
-					{
-						hi = true;
-					}
+					shift_buffers(bfs);
+					if (s->gm == time_count || s->gm == endless) generate_giberish(rti, bfs, s, s->words-1);
 				}
+				else hi = true;
 			}
 			if (rti->curcon != eow && current_word_position < strlen(bfs->pre[0]))
 			{
@@ -514,10 +454,7 @@ int loop(set *s)
 				}
 				else
 				{
-					if (mistakes > 0 && bfs->mistake_pos[mistakes-1] == current_word_position)
-					{
-						--mistakes;
-					}
+					if (mistakes > 0 && bfs->mistake_pos[mistakes-1] == current_word_position) --mistakes;
 					hi = false;
 				}
 				++current_word_position;
@@ -533,7 +470,7 @@ int loop(set *s)
 
 int main(int argc, char **argv)
 {
-	bool tt = false, ww = false, dd = false, th = false, ths = false;
+	bool tt = false, ww = false, dd = false, th = false, ths = false, dics = false, kmps = false;
 	set s_o =
 	{
 		.gm = gm_undefined,
@@ -555,8 +492,7 @@ int main(int argc, char **argv)
 			"   -e, --endless       set gamemode to endless\n" \
 			"   -d, --dictionary    set dictionary\n" \
 			"   -D, --dont-stall    don't stall on wrong words\n" \
-			"   -s, --stay-inplace  shift words forward\n" \
-			);
+			"   -s, --stay-inplace  shift words forward\n");
 		}
 		elif (strcmp(*argv, "--version") == 0 || strcmp(*argv, "-v") == 0)
 		{
@@ -572,94 +508,42 @@ int main(int argc, char **argv)
 			s_o.gm = time_count;
 			tt = true;
 		}
-		elif (strcmp(*argv, "--endless") == 0 || strcmp(*argv, "-e") == 0)
-		{
-			s_o.gm = endless;
-		}
-		elif (strcmp(*argv, "--dictionary") == 0 || strcmp(*argv, "-d") == 0)
-		{
-			dd = true;
-		}
-		elif (strcmp(*argv, "--stay-inplace") == 0 || strcmp(*argv, "-s") == 0)
-		{
-			s_o.stay = true;
-		}
-		elif (strcmp(*argv, "--theme") == 0 || strcmp(*argv, "-H") == 0)
-		{
-			th = true;
-		}
-		elif (strcmp(*argv, "--dont-stall") == 0 || strcmp(*argv, "-D") == 0)
-		{
-			s_o.stall = false;
-		}
+		elif (strcmp(*argv, "--endless") == 0 || strcmp(*argv, "-e") == 0)      s_o.gm = endless;
+		elif (strcmp(*argv, "--dictionary") == 0 || strcmp(*argv, "-d") == 0)   dd = true;
+		elif (strcmp(*argv, "--stay-inplace") == 0 || strcmp(*argv, "-s") == 0) s_o.stay = true;
+		elif (strcmp(*argv, "--theme") == 0 || strcmp(*argv, "-H") == 0)        th = true;
+		elif (strcmp(*argv, "--dont-stall") == 0 || strcmp(*argv, "-D") == 0)   s_o.stall = false;
 		elif (tt)
 		{
 			int t = atoi(*argv);
-			if (t < 0)
-			{
-				quit(NULL, true, "invalid time\n");
-			}
-			else
-			{
-				s_o.timer = (unsigned int) t;
-			}
+			if (t < 0) quit(NULL, true, "invalid time\n");
+			else       s_o.timer = (unsigned int) t;
 			tt = false;
 		}
 		elif (ww)
 		{
 			int t = atoi(*argv);
-			if (t < 0)
-			{
-				quit(NULL, true, "invalid time\n");
-			}
-			else
-			{
-				s_o.words = (uint) t;
-			}
+			if (t < 0) quit(NULL, true, "invalid time\n");
+			else       s_o.words = (uint) t;
 			ww = false;
 		}
 		elif (dd)
 		{
-			if (strcmp(*argv, "en") == 0)
-			{
-				load_dict("en.dic");
-			}
-			elif (strcmp(*argv, "unix") == 0)
-			{
-				load_dict("unix.dic");
-			}
-			else
-			{
-				quit(NULL, true, "dictionary not found\n");
-			}
+			load_dict(*argv);
+			dics = true;
 		}
 		elif (th)
 		{
 			load_thm(*argv);
 			ths = true;
 		}
-		else
-		{
-			quit(NULL, true, "invalid argument\n");
-		}
+		else quit(NULL, true, "invalid argument\n");
 	}
-	if (tt || s_o.timer == 0)
-	{
-		s_o.timer = 15;
-	}
-	if (ww || s_o.words == 0)
-	{
-		s_o.words = 40;
-	}
-	if (s_o.gm == gm_undefined)
-	{
-		s_o.gm = words_count;
-	}
-	load_dict("dicts/en.dic");
-	load_kmp("keymaps/dvorak.kmp");
-	if (!ths)
-	{
-		load_thm("themes/default.theme");
-	}
+	if (tt || s_o.timer == 0) s_o.timer = 15;
+	if (ww || s_o.words == 0) s_o.words = 40;
+	if (s_o.gm == gm_undefined) s_o.gm = words_count;
+	if (!dics) load_dict("dicts/en.dic");
+	if (!kmps) load_kmp("keymaps/dvorak.kmp");
+	if (!ths)  load_thm("themes/default.theme");
 	loop(&s_o);
 }
