@@ -12,10 +12,10 @@
 #include <unistd.h>
 #include <string.h>
 #include <time.h>
-#include <ctype.h>
 #include <curses.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <ctype.h>
 
 
 #define uint unsigned int
@@ -553,15 +553,54 @@ static int menu()
 	};
 	curses_init();
 	load_dict("dicts/en.dic");
-	while (true)
+	WINDOW *w;
+	char list[5][7] = { "One", "Two", "Three", "Four", "Five" };
+	char item[7];
+	int ch = '\0';
+	int i = 0, width = 7;
+	w = newwin( 10, 12, 1, 1 );
+	box( w, 0, 0 );
+	for( i=0; i<5; i++ )
 	{
-		char c = '\0';
-		while (setch(&c) < 1);
-		if (c == '\n')
+		if( i == 0 )
 		{
-			loop(&s_o);
+			wattron( w, A_STANDOUT );
 		}
+		else
+		{
+			wattroff( w, A_STANDOUT );
+		}
+		sprintf(item, "%-7s",  list[i]);
+		mvwprintw( w, i+1, 2, "%s", item );
 	}
+	wrefresh( w );
+	i = 0;
+	noecho();
+	keypad( w, TRUE );
+	curs_set( 0 );
+	while ( (ch = wgetch(w)) != 'q')
+	{
+		sprintf(item, "%-7s",  list[i]);
+		mvwprintw( w, i+1, 2, "%s", item ) ;
+		switch( ch )
+		{
+			case KEY_UP:
+				i--;
+				i = ( i<0 ) ? 4 : i;
+				break;
+			case KEY_DOWN:
+				i++;
+				i = ( i>4 ) ? 0 : i;
+				break;
+		}
+		
+		wattron( w, A_STANDOUT );
+		sprintf(item, "%-7s",  list[i]);
+		mvwprintw( w, i+1, 2, "%s", item);
+		wattroff( w, A_STANDOUT );
+	}
+	delwin( w );
+	endwin();
 	return 0;
 }
 
@@ -578,7 +617,7 @@ static noreturn void help(void)
 	puts("Usage: tc [OPTION]\n\n" \
 	     " -h, --help    -> prints this\n" \
 	     " -v, --version -> prints version\n" \
-	     " -s, --theme   -> shift words forward\n");
+	     " -t, --theme   -> set theme file\n");
 	exit(0);
 }
 
@@ -664,5 +703,6 @@ int main(const int argc, char **argv)
 	if (argument != nothing && argument != noarg) error("uneven options", *--argv, 1, 0);
 	
 	load_thm("themes/monokai.theme");
-	return menu();
+	menu();
+	return 0;
 }
