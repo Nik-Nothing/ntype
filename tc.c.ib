@@ -1,3 +1,11 @@
+/*                         *
+ *          ntype          *
+ *                         */
+
+
+#define VERSION "0.12"
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdnoreturn.h>
@@ -9,10 +17,22 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
+
 #define uint unsigned int
 #define ulong unsigned long
+typedef unsigned int psize
 
-#define elif else if
+
+typedef enum ansi_color
+	blank   = 0
+	red     = 31
+	green   = 32
+	yellow  = 33
+	blue    = 34
+	magenta = 35
+	cyan    = 36
+	white   = 37
+color
 
 typedef enum contl
 	unstarted
@@ -58,6 +78,41 @@ char         kmp   [31]
 unsigned int thm   [6]   [3]
 
 
+static void set_color(const color c)
+	printf("\033[%dm", c)
+
+static void msg_out(const size_t num, ...)
+	va_list messages
+	va_start(messages, num)
+	
+	size_t x = 0
+	while (x++ < num)
+		printf("%s%s", va_arg(messages, const char *), x != num ? ": " : "\n")
+	
+	va_end(messages)
+
+static void faulter(const char *label, const color col, const char *msg, const char *typ, const psize loc)
+	set_color(col)
+	
+	if (!loc)
+		msg_out(3, label, typ, msg)
+	else
+		char locs[16]
+		sprintf(locs, "%d", loc)
+		msg_out(5, label, typ, msg, "at line", locs)
+	
+	set_color(blank)
+
+static noreturn void error(const char *typ, const char *msg, const int code, const psize loc)
+	faulter("error", red, msg, typ, loc)
+	exit(code)
+
+static void warn(const char *typ, const char *msg, const psize loc)
+	faulter("warning", magenta, msg, typ, loc)
+
+static void notice(const char *typ, const char *msg, const psize loc)
+	faulter("notice", white, msg, typ, loc)
+
 static void strip_newline(char *str)
 	if (str[strlen(str) - 1] == '\n') str[strlen(str) - 1] = '\0'
 
@@ -71,19 +126,19 @@ static void rectangle(int y1, int x1, int y2, int x2)
 	mvaddch(y1, x2, ACS_URCORNER)
 	mvaddch(y2, x2, ACS_LRCORNER)
 
-void load_dict(const char *path)
+static void load_dict(const char *path)
 	FILE *fp = fopen(path, "r")
 	if (!fp) return
 	while(fgets(dic[dic_s], 100, fp)) strip_newline(dic[dic_s++])
 	fclose(fp)
 
-void load_kmp(const char *path)
+static void load_kmp(const char *path)
 	FILE *fp = fopen(path, "r")
 	if (!fp) return
 	fgets(kmp, 30, fp)
 	fclose(fp)
 
-void load_thm(const char *path)
+static void load_thm(const char *path)
 	FILE *fp = fopen(path, "r")
 	if (!fp) return
 	size_t x = 0
@@ -97,7 +152,7 @@ void load_thm(const char *path)
 		++x
 	fclose(fp)
 
-void shift_buffers(buffs *bfs)
+static void shift_buffers(buffs *bfs)
 	uint ctl = 0
 	
 	memmove(bfs->pre, bfs->pre + 1, sizeof(bfs->pre[0]) * 49)
@@ -105,13 +160,13 @@ void shift_buffers(buffs *bfs)
 	
 	bfs->post[ctl] = '\0'
 
-void generate_giberish(rt_info *rti, buffs *bfs, set *s, uint len)
+static void generate_giberish(rt_info *rti, buffs *bfs, set *s, uint len)
 	int ran
 	
 	ran = (rand() % dic_s)
 	strcpy(bfs->pre[len], dic[ran])
 
-WINDOW *create_newwin(int h, int w, int sy, int sx)
+static WINDOW *create_newwin(int h, int w, int sy, int sx)
 	WINDOW *local_win
 	
 	local_win = newwin(h, w, sy, sx)
@@ -119,15 +174,15 @@ WINDOW *create_newwin(int h, int w, int sy, int sx)
 	wbkgd(local_win, COLOR_PAIR(5))
 	return local_win
 
-void srect(int h, int w, int sy, int sx)
+static void srect(int h, int w, int sy, int sx)
 	rectangle(sy, sx, sy + h, sx + w)
 
-void update_win(int h, int w, int sy, int sx, bool pressed, bool hi)
+static void update_win(int h, int w, int sy, int sx, bool pressed, bool hi)
 	attron(COLOR_PAIR(!pressed ? 5 : hi ? 2 : 1))
 	srect(h, w, sy, sx)
 	attroff(COLOR_PAIR(!pressed ? 5 : hi ? 2 : 1))
 
-void init_keyboard(buffs *bfs, int len, int hei)
+static void init_keyboard(buffs *bfs, int len, int hei)
 	int  hr = 4, ofs = 0, idp = 0
 	
 	uint ctl = 0
@@ -143,8 +198,8 @@ void init_keyboard(buffs *bfs, int len, int hei)
 	srect(hei / 17, (hei / 9) * 5, hei - (hei / 15), (len / 2) - ((hei / 15) * 4))
 
 
-void update_keyboard(buffs *bfs, int len, int hei, bool hi, char in, char last)
-	int		hr = 4, ofs = 0, idp = 0
+static void update_keyboard(buffs *bfs, int len, int hei, bool hi, char in, char last)
+	int  hr = 4, ofs = 0, idp = 0
 	
 	uint ctl = 0
 	do
@@ -162,7 +217,6 @@ void update_keyboard(buffs *bfs, int len, int hei, bool hi, char in, char last)
 
 static void curses_init()
 	initscr()
-	printf("\033[6 q")
 	cbreak()
 	noecho()
 	timeout(1)
@@ -239,7 +293,8 @@ static void init_info(rt_info *rti, int len, int hei)
 static void update_info(rt_info *rti)
 	return
 
-int loop(set *s)
+static int loop(set *s)
+	printf("\033[6 q")
 	buffs *bfs,bfs_o =
 		.post = ""
 	
@@ -316,7 +371,7 @@ int loop(set *s)
 				else hi = true
 		if (rti->curcon == backspace)
 			if (mistakes > 0 && bfs->mistake_pos[mistakes-1] == current_word_position) --mistakes
-		elif (rti->curcon == insert)
+		else if (rti->curcon == insert)
 			if (current_word_position == strlen(bfs->pre[0]) - 1)
 				if (!strcmp(bfs->pre[0], bfs->post) || !s->stall)
 					current_word_position = 0
@@ -340,64 +395,96 @@ int loop(set *s)
 					if (mistakes > 0 && bfs->mistake_pos[mistakes-1] == current_word_position) --mistakes
 					hi = false
 				++current_word_position
-		elif (rti->curcon == eow && c == ' ')
+		else if (rti->curcon == eow && c == ' ')
 			hi = false
 			rti->curcon = insert
 
-int main(int argc, char **argv)
-	bool tt = false, ww = false, dd = false, th = false, ths = false, dics = false, kmps = false
+static int menu()
 	set s_o =
 		.gm = gm_undefined
 		.stall = true
 		.stay = false
+	curses_init()
+	load_dict("dicts/en.dic")
+	while (true)
+		char c = '\0'
+		while (setch(&c) < 1)
+		if (c == '\n')
+			loop(&s_o)
+	return 0
+
+typedef enum arg_mode
+	noarg
+	nothing
+	theme
+amode
+
+static noreturn void help(void)
+	puts("Usage: tc [OPTION]\n\n" \
+	     " -h, --help    -> prints this\n" \
+	     " -v, --version -> prints version\n" \
+	     " -s, --theme   -> shift words forward\n")
+	exit(0)
+
+static noreturn void version(void)
+	fputs("ntype version "VERSION"\n", stdout)
 	
-	while (0 < --argc)
-		++argv
-		if (strcmp(*argv, "--help") == 0 || strcmp(*argv, "-h") == 0)
-			quit(NULL, true, \
-			"Usage: tc [OPTION]\n" \
-			"   -h, --help          prints this\n" \
-			"   -v, --version       prints version\n" \
-			"   -w, --words         set gamemode to word\n" \
-			"   -t, --time          set gamemode to time\n" \
-			"   -e, --endless       set gamemode to endless\n" \
-			"   -d, --dictionary    set dictionary\n" \
-			"   -D, --dont-stall    don't stall on wrong words\n" \
-			"   -s, --stay-inplace  shift words forward\n")
-		elif (strcmp(*argv, "--version") == 0 || strcmp(*argv, "-v") == 0)
-			quit(NULL, true, "Typing Curses V0\n")
-		elif (strcmp(*argv, "--words") == 0 || strcmp(*argv, "-w") == 0)
-			s_o.gm = words_count
-			ww = true
-		elif (strcmp(*argv, "--time")==0 || strcmp(*argv, "-t") == 0)
-			s_o.gm = time_count
-			tt = true
-		elif (strcmp(*argv, "--endless") == 0 || strcmp(*argv, "-e") == 0)      s_o.gm = endless
-		elif (strcmp(*argv, "--dictionary") == 0 || strcmp(*argv, "-d") == 0)   dd = true
-		elif (strcmp(*argv, "--stay-inplace") == 0 || strcmp(*argv, "-s") == 0) s_o.stay = true
-		elif (strcmp(*argv, "--theme") == 0 || strcmp(*argv, "-H") == 0)        th = true
-		elif (strcmp(*argv, "--dont-stall") == 0 || strcmp(*argv, "-D") == 0)   s_o.stall = false
-		elif (tt)
-			int t = atoi(*argv)
-			if (t < 0) quit(NULL, true, "invalid time\n")
-			else       s_o.timer = (unsigned int) t
-			tt = false
-		elif (ww)
-			int t = atoi(*argv)
-			if (t < 0) quit(NULL, true, "invalid time\n")
-			else       s_o.words = (uint) t
-			ww = false
-		elif (dd)
-			load_dict(*argv)
-			dics = true
-		elif (th)
-			load_thm(*argv)
-			ths = true
-		else quit(NULL, true, "invalid argument\n")
-	if (tt || s_o.timer == 0) s_o.timer = 15
-	if (ww || s_o.words == 0) s_o.words = 40
-	if (s_o.gm == gm_undefined) s_o.gm = words_count
-	if (!dics) load_dict("dicts/en.dic")
-	if (!kmps) load_kmp("keymaps/dvorak.kmp")
-	if (!ths)  load_thm("themes/default.theme")
-	loop(&s_o)
+	exit(0)
+
+static amode long_arg_parser(const char *arg)
+	if (!strcmp("help", arg)) help()
+	
+	if (!strcmp("version", arg)) version()
+	
+	if (strcmp(arg, "--theme") == 0 || strcmp(arg, "-H") == 0)
+		return theme
+	
+	warn("invalid option", arg, 0)
+	
+	return nothing
+
+static amode short_arg_parser(const char *arg)
+	psize i = 0 
+	while(arg[i])
+		switch (arg[i])
+			
+			case 'h': help()
+			
+			case 'V': version()
+			
+			case 't': return theme
+			
+			default :
+				char invalid[1]
+				invalid[0] = arg[i]
+				
+				warn("invalid option", invalid, 0)
+				
+				return nothing
+		i++
+	return nothing
+
+static amode arg_parser(char *arg, const amode last)
+	if (arg[0] != '-' || strlen(arg) < 2)
+		switch (last)
+			case theme:
+				load_thm(arg)
+				return nothing
+			case nothing:
+			case noarg:
+				return noarg
+	
+	if (arg[1] == '-') return long_arg_parser(arg + 2)
+	
+	return short_arg_parser(arg + 1)
+
+int main(const int argc, char **argv)
+	amode argument = nothing
+	
+	while (*++argv)
+		argument = arg_parser(*argv, argument)
+	
+	if (argument != nothing && argument != noarg) error("uneven options", *--argv, 1, 0)
+	
+	load_thm("themes/monokai.theme")
+	return menu()
