@@ -74,8 +74,8 @@ set
 
 char         dic   [1000][100]
 size_t       dic_s = 0
-char         kmp   [31]
-unsigned int thm   [6]   [3]
+char         kmp   [30]
+unsigned int thm   [7]   [3]
 
 
 static void set_color(const color c)
@@ -142,7 +142,7 @@ static void load_thm(const char *path)
 	FILE *fp = fopen(path, "r")
 	if (!fp) return
 	size_t x = 0
-	while (x < 6)
+	while (x < 7)
 		char col[10]
 		if (!fgets(col, 10, fp)) break
 		sscanf(col, "#%2x%2x%2x", &thm[x][0], &thm[x][1], &thm[x][2] )
@@ -222,17 +222,18 @@ static void curses_init()
 	timeout(1)
 	start_color()
 	
-	init_color(17, thm[0][0], thm[0][1], thm[0][2])
-	init_color(18, thm[1][0], thm[1][1], thm[1][2])
-	init_color(19, thm[2][0], thm[2][1], thm[2][2])
-	init_color(20, thm[3][0], thm[3][1], thm[3][2])
-	init_color(21, thm[4][0], thm[4][1], thm[4][2])
-	init_color(22, thm[5][0], thm[5][1], thm[5][2])
-	init_pair(1, 22, 19)
-	init_pair(2, 22, 20)
-	init_pair(3, 17, 22)
-	init_pair(4, 22, 22)
-	init_pair(5, 21, 22)
+	init_color(1, thm[0][0], thm[0][1], thm[0][2])
+	init_color(7, thm[1][0], thm[1][1], thm[1][2])
+	init_color(2, thm[2][0], thm[2][1], thm[2][2])
+	init_color(3, thm[3][0], thm[3][1], thm[3][2])
+	init_color(4, thm[4][0], thm[4][1], thm[4][2])
+	init_color(5, thm[5][0], thm[5][1], thm[5][2])
+	init_color(6, thm[6][0], thm[6][1], thm[6][2])
+	init_pair(1, 6, 3)
+	init_pair(2, 6, 4)
+	init_pair(3, 1, 6)
+	init_pair(4, 6, 7)
+	init_pair(5, 5, 6)
 
 static void noreturn quit(rt_info *rti, bool print, char *custom_log)
 	ulong time_elps
