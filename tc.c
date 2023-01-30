@@ -286,9 +286,7 @@ static void update_keyboard(buffs *bfs, int len, int hei, bool hi, char in, char
 static void curses_init()
 {
 	initscr();
-	cbreak();
 	noecho();
-	timeout(1);
 	start_color();
 	
 	init_color(1, thm[0][0], thm[0][1], thm[0][2]);
@@ -398,6 +396,8 @@ static void update_info(rt_info *rti)
 
 static int loop(set *s)
 {
+	cbreak();
+	timeout(1);
 	printf("\033[6 q");
 	buffs *bfs,bfs_o =
 	{
@@ -555,13 +555,17 @@ static int menu()
 	curses_init();
 	load_dict("dicts/en.dic");
 	WINDOW *w;
-	char list[5][7] = { "One", "Two", "Three", "Four", "Five" };
-	char item[7];
+	char list[2][16] =
+	{
+		"Local",
+		"Network"
+	};
+	char item[10];
 	int ch = '\0';
 	int i = 0, width = 7;
-	w = newwin( 10, 12, 1, 1 );
+	w = newwin(10, 20, LINES / 2 - 5, COLS / 2 - 10);
 	box( w, 0, 0 );
-	for( i=0; i<5; i++ )
+	for( i=0; i<2; i++ )
 	{
 		if( i == 0 )
 		{
@@ -572,7 +576,7 @@ static int menu()
 			wattroff( w, A_STANDOUT );
 		}
 		sprintf(item, "%-7s",  list[i]);
-		mvwprintw( w, i+1, 2, "%s", item );
+		mvwprintw( w, i+5, 7, "%s", item );
 	}
 	wrefresh( w );
 	i = 0;
@@ -582,25 +586,30 @@ static int menu()
 	while ( (ch = wgetch(w)) != 'q')
 	{
 		sprintf(item, "%-7s",  list[i]);
-		mvwprintw( w, i+1, 2, "%s", item ) ;
+		mvwprintw( w, i+5, 7, "%s", item ) ;
 		switch( ch )
 		{
 			case KEY_UP:
 				i--;
-				i = ( i<0 ) ? 4 : i;
+				i = ( i<0 ) ? 1 : i;
 				break;
 			case KEY_DOWN:
 				i++;
-				i = ( i>4 ) ? 0 : i;
+				i = ( i>1 ) ? 0 : i;
+				break;
+			case '\n':
+				delwin(w);
+				endwin();
+				return 0;
 				break;
 		}
 		
 		wattron( w, A_STANDOUT );
 		sprintf(item, "%-7s",  list[i]);
-		mvwprintw( w, i+1, 2, "%s", item);
+		mvwprintw( w, i+5, 7, "%s", item);
 		wattroff( w, A_STANDOUT );
 	}
-	delwin( w );
+	delwin(w);
 	endwin();
 	return 0;
 }
