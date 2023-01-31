@@ -423,7 +423,6 @@ static int loop(set *s)
 	
 	srand((uint) time(NULL));
 	curses_init();
-	wbkgd(stdscr, COLOR_PAIR(5));
 	ctl = 0;
 	do
 	{
@@ -553,6 +552,8 @@ static int menu()
 		.stay = false
 	};
 	curses_init();
+	wbkgd(stdscr, COLOR_PAIR(5));
+	refresh();
 	load_dict("dicts/en.dic");
 	WINDOW *w;
 	char list[2][16] =
@@ -565,14 +566,17 @@ static int menu()
 	int i = 0, width = 7;
 	w = newwin(10, 20, LINES / 2 - 5, COLS / 2 - 10);
 	box( w, 0, 0 );
+	wbkgd(w, COLOR_PAIR(5));
 	for( i=0; i<2; i++ )
 	{
 		if( i == 0 )
 		{
+			wattron(w,COLOR_PAIR(5));
 			wattron( w, A_STANDOUT );
 		}
 		else
 		{
+			wattroff(w,COLOR_PAIR(5));
 			wattroff( w, A_STANDOUT );
 		}
 		sprintf(item, "%-7s",  list[i]);
@@ -586,7 +590,9 @@ static int menu()
 	while ( (ch = wgetch(w)) != 'q')
 	{
 		sprintf(item, "%-7s",  list[i]);
+		wattron(w,COLOR_PAIR(5));
 		mvwprintw( w, i+5, 7, "%s", item ) ;
+		wattroff(w,COLOR_PAIR(5));
 		switch( ch )
 		{
 			case KEY_UP:
@@ -598,16 +604,18 @@ static int menu()
 				i = ( i>1 ) ? 0 : i;
 				break;
 			case '\n':
-				delwin(w);
-				endwin();
-				return 0;
+				s_o.gm = words_count;
+				s_o.words = 25;
+				loop(&s_o);
 				break;
 		}
 		
+		wattron(w, COLOR_PAIR(5));
 		wattron( w, A_STANDOUT );
 		sprintf(item, "%-7s",  list[i]);
 		mvwprintw( w, i+5, 7, "%s", item);
 		wattroff( w, A_STANDOUT );
+		wattroff(w, COLOR_PAIR(5));
 	}
 	delwin(w);
 	endwin();
@@ -713,6 +721,7 @@ int main(const int argc, char **argv)
 	if (argument != nothing && argument != noarg) error("uneven options", *--argv, 1, 0);
 	
 	load_thm("themes/monokai.theme");
+	load_kmp("keymaps/dvorak.kmp");
 	menu();
 	return 0;
 }
